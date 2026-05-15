@@ -25,6 +25,9 @@ export interface ListParams {
   search?: string;
   sortBy?: string;
   sortDir?: "asc" | "desc";
+  /** JSON:API-style `include` query (comma-separated associations). */
+  include?: string;
+  limit?: number;
   filters?: Record<string, FilterValue>;
 }
 
@@ -34,4 +37,11 @@ export interface ListParams {
  */
 export interface QueryMeta {
   silentError?: boolean;
+}
+
+export interface UserInfo {
+  id: string;
+  name: string;
+  code: string;
+  username: string;
 }

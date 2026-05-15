@@ -3,14 +3,14 @@ import { Plus } from "lucide-react";
 import { DataTable } from "@/components/data-table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { PaginationBar } from "@/components/pagination-bar";
 import { QueryState } from "@/components/states/QueryState";
 import type { ApiError } from "@/api/_client";
 import { getSettingsResource } from "../registry";
 import { useResourceListingState } from "../hooks/useResourceListingState";
-import type { SettingsResourceEntry } from "../types";
+import type { SettingsResourceEntry, BuildListingColumnsContext } from "../types";
 import { buildListingColumns } from "./listing-columns";
 import { ResourceRowForm } from "./ResourceRowForm";
+import { PaginationBar } from "@/components/pagination-bar";
 
 interface SettingsResourceListingProps {
   slug: string;
@@ -53,17 +53,23 @@ function ResourceTable({ entry }: ResourceTableProps) {
     },
   });
 
-  const expandedIds =
-    editing.kind === "edit" ? new Set<string>([editing.id]) : new Set<string>();
+  const expandedIds = editing.kind === "edit" ? new Set<string>([editing.id]) : new Set<string>();
 
-  const columns = buildListingColumns({
+  const listingCtx: BuildListingColumnsContext = {
+    entry,
     editing,
     onEdit: state.toggleEdit,
-    onDelete: (id) => {
+    onDelete: (id: string) => {
       if (editing.kind === "edit" && editing.id === id) state.closeEditor();
       remove.mutate({ id });
     },
-  });
+  };
+
+  // const columns = entry.buildListingColumns
+  //   ? entry.buildListingColumns(listingCtx)
+  //   : buildListingColumns(listingCtx);
+
+  const columns = buildListingColumns(listingCtx, entry.bodyKey);
 
   return (
     <div>

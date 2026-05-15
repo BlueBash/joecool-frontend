@@ -25,7 +25,6 @@ function shapeUser(raw: AuthUserRaw): AuthUser {
 
 export const authApi = {
   async login(payload: LoginPayload): Promise<LoginResult> {
-    debugger;
     const res = await http.post("/auth/login", { user: payload });
     const parsed = LoginResponseSchema.parse(res.data);
     return {

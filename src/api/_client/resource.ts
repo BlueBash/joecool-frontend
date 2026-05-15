@@ -23,8 +23,9 @@ export function createResource<
   TEntity,
   TCreate = Partial<TEntity>,
   TUpdate = Partial<TEntity>,
->(cfg: ResourceConfig<TEntity, TCreate, TUpdate>): Resource<TEntity, TCreate, TUpdate> {
+ >(cfg: ResourceConfig<TEntity, TCreate, TUpdate>): Resource<TEntity, TCreate, TUpdate> {
   const keys = createResourceKeys(cfg.scope);
+
   const pathFor = cfg.pathFor ?? ((id: ID) => `${cfg.path}/${id}`);
   const updateVerb = cfg.idempotentUpdate ?? "PATCH";
 
@@ -34,28 +35,35 @@ export function createResource<
       const res = await http.get<ApiEnvelope<TEntity[]>>(cfg.path, {
         params: flattenParams(merged),
       });
-      return cfg.transform?.list ? cfg.transform.list(res.data) : shapePaginated(res.data);
+      return cfg.transform?.list
+        ? cfg.transform.list(res.data, merged)
+        : shapePaginated(res.data);
     },
-    async detail(id) {
-      const res = await http.get<ApiEnvelope<TEntity>>(pathFor(id));
-      const raw = res.data.data;
-      return cfg.transform?.entity ? cfg.transform.entity(raw) : raw;
-    },
-    async create(payload) {
-      const res = await http.post<ApiEnvelope<TEntity>>(cfg.path, payload);
-      const raw = res.data.data;
-      return cfg.transform?.entity ? cfg.transform.entity(raw) : raw;
-    },
-    async update(id, payload) {
-      const res = await http.request<ApiEnvelope<TEntity>>({
-        method: updateVerb,
-        url: pathFor(id),
-        data: payload,
+    async detail(id, params) {
+      const merged = mergeListParams(cfg.defaultDetailParams, params);
+      const res = await http.get<ApiEnvelope<TEntity>>(pathFor(id), {
+        params: flattenParams(merged),
       });
       const raw = res.data.data;
       return cfg.transform?.entity ? cfg.transform.entity(raw) : raw;
     },
-    async remove(id) {
+    async create(payload) {
+      const body = cfg.bodyKey ? { [cfg.bodyKey]: payload } : payload;
+      const res = await http.post<ApiEnvelope<TEntity>>(cfg.path, body);
+      const raw = res.data.data;
+      return cfg.transform?.entity ? cfg.transform.entity(raw) : raw;
+    },
+    async update(id, payload) {
+      const data = cfg.bodyKey ? { [cfg.bodyKey]: payload } : payload;
+      const res = await http.request<ApiEnvelope<TEntity>>({
+        method: updateVerb,
+        url: pathFor(id),
+        data,
+      });
+      const raw = res.data.data;
+      return cfg.transform?.entity ? cfg.transform.entity(raw) : raw;
+    },
+    async delete(id) {
       await http.delete(pathFor(id));
     },
   };
@@ -151,7 +159,7 @@ export function createResource<
       const qc = useQueryClient();
       return useMutation<void, ApiError, { id: ID }>({
         ...opts,
-        mutationFn: ({ id }) => api.remove(id),
+        mutationFn: ({ id }) => api.delete(id),
         onSuccess: (...args) => {
           const [, vars] = args;
           qc.removeQueries({ queryKey: keys.detail(vars.id) });

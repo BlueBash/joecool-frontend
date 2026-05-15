@@ -1,2 +1,2 @@
-export * from "./categories";
-export * from "./category-groups";
+export * from "./types";
+export * from "./stock";

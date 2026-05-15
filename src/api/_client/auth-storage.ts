@@ -1,13 +1,11 @@
-/**
- * Token storage seam. The rest of the app should never touch
- * `localStorage` directly for auth — swap this module to move to
- * httpOnly cookies, native keychain, etc.
- */
+import { UserInfo } from "./types";
 
-const ACCESS_KEY = "joecool.access_token";
+const ACCESS_KEY = "access_token";
 const LEGACY_KEY = "Access-Token";
+const USER_INFO_KEY = "User-Info";
 
 type RefreshFn = () => Promise<string | null>;
+
 
 let refreshImpl: RefreshFn = async () => null;
 
@@ -26,10 +24,6 @@ export const authStorage = {
     localStorage.removeItem(ACCESS_KEY);
     localStorage.removeItem(LEGACY_KEY);
   },
-  /**
-   * Register the refresh implementation from the auth module. Kept
-   * indirect so `_client` has no dependency on `api/auth`.
-   */
   registerRefresh(fn: RefreshFn): void {
     refreshImpl = fn;
   },

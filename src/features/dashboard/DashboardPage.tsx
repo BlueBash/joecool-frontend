@@ -3,7 +3,9 @@ import { useMemo, type ReactNode } from "react";
 import {
   PoundSterling, ShoppingCart, Boxes, Users, Building2,
 } from "lucide-react";
-import { useStocks, useAddresses, useOrders, useTxns } from "@/store";
+import { useOrders, useTxns } from "@/store";
+import { useStockDirectory } from "@/features/stock/hooks";
+import { useDashboardSummary } from "./hooks";
 import { KpiTile } from "@/components/kpi-tile";
 import { CopyableCode, PageHeader } from "@/components/app-shell";
 import { Pill } from "@/components/pill";
@@ -13,20 +15,23 @@ function fmt(n: number) {
 }
 
 export function DashboardPage() {
-  const stocks = useStocks((s) => s.items);
-  const addresses = useAddresses((s) => s.items);
+  const summary = useDashboardSummary();
+  const recentStockQuery = useStockDirectory({ page: 1, pageSize: 6 });
   const orders = useOrders((s) => s.items);
   const txns = useTxns((s) => s.items);
 
   const kpis = useMemo(() => {
     const sales = txns.filter(t => t.kind === "Invoice").reduce((sum, t) => sum + t.value, 0);
-    const stockCount = stocks.reduce((sum, s) => sum + s.onHand, 0);
-    const customers = addresses.filter(a => a.type === "Customer").length;
-    const suppliers = addresses.filter(a => a.type === "Supplier").length;
-    return { sales, stockCount, customers, suppliers, ordersN: orders.length };
-  }, [txns, stocks, addresses, orders]);
+    return {
+      sales,
+      stockCount: summary.summary.stockTotal,
+      customers: summary.summary.customerTotal,
+      suppliers: summary.summary.supplierTotal,
+      ordersN: orders.length,
+    };
+  }, [txns, summary.summary, orders.length]);
 
-  const recentStocks = stocks.slice(0, 6);
+  const recentStocks = recentStockQuery.items;
   const recentOrders = orders.slice(0, 6);
   const recentInvoices = txns.filter(t => t.kind === "Invoice").slice(0, 6);
   const recentPayments = txns.filter(t => t.kind === "Payment").slice(0, 6);

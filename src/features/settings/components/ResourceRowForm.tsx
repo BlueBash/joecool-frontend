@@ -52,6 +52,7 @@ export function ResourceRowForm({ entry, mode, onDone }: ResourceRowFormProps) {
     if (hasErrors(next)) return;
 
     const payload = toFormPayload(fields, values);
+    const wire = entry.mapWritePayload ? entry.mapWritePayload(payload) : payload;
 
     const onSuccess = () => {
       toast.success(isEdit ? `${singular} updated` : `${singular} created`);
@@ -68,9 +69,9 @@ export function ResourceRowForm({ entry, mode, onDone }: ResourceRowFormProps) {
     };
 
     if (isEdit) {
-      update.mutate({ id: mode.id, data: payload }, { onSuccess, onError });
+      update.mutate({ id: mode.id, data: wire }, { onSuccess, onError });
     } else {
-      create.mutate(payload, { onSuccess, onError });
+      create.mutate(wire, { onSuccess, onError });
     }
   };
 

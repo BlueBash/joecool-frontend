@@ -36,17 +36,22 @@ export function LoginPage() {
   });
 
   const login = useLoginMutation({
-    onSuccess: (result) => {
-      authStorage.setAccessToken(result.token);
-      setUser(result.user);
+    onSuccess: (response) => {
+      authStorage.setAccessToken(response.token);
+      setUser({
+        id: response.user.id,
+        name: response.user.name ?? "",
+        code: response.user.code ?? "",
+        username: response.user.username ?? "",
+        email: response.user.email ?? "",
+      });
       const target =
         search.redirect && search.redirect.startsWith("/") ? search.redirect : HOME_REDIRECT;
-      const displayName = result.user.name ?? result.user.username ?? result.user.email ?? "";
+      const displayName = response.user.name ?? response.user.username ?? response.user.email ?? "";
       toast.success(displayName ? `Welcome back, ${displayName}` : "Signed in");
       navigate({ to: target, replace: true });
     },
     onError: (err) => {
-      debugger
       if (err.fieldErrors) {
         for (const [field, messages] of Object.entries(err.fieldErrors)) {
           const path = field as keyof LoginFormValues;
@@ -65,10 +70,7 @@ export function LoginPage() {
       });
     },
     (formErrors) => {
-      // Surface why submit silently bailed (e.g. agree unchecked, empty fields)
-      // instead of leaving the form looking unresponsive.
       if (import.meta.env.DEV) {
-        // eslint-disable-next-line no-console
         console.warn("[LoginPage] submit blocked by validation", formErrors);
       }
       const firstMessage = Object.values(formErrors)

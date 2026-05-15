@@ -1,23 +1,26 @@
 import { useNavigate } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
-import { Plus, Download, Zap } from "lucide-react";
-import { useAddresses } from "@/store";
+import { useState } from "react";
+import { Plus, Download, Zap, Loader2 } from "lucide-react";
+import { addresses } from "@/api/address";
+import type { ApiError } from "@/api/_client";
 import { PageHeader, CopyableCode } from "@/components/app-shell";
 import { DataTable, Toolbar, TableSearch, type Column } from "@/components/data-table";
 import { Pill } from "@/components/pill";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PaginationBar } from "@/components/pagination-bar";
-import { RowActions, EditLink, DeleteButton } from "@/components/row-actions";
-import { usePaginated } from "@/hooks/use-paginated";
+import { RowActions, EditLink } from "@/components/row-actions";
 import { toast } from "sonner";
 import type { Address, AddressType } from "@/lib/types";
+import { addressRowKey, useAddressDirectory } from "./hooks";
+import { addressToPayload } from "./map-address";
 
 type AddAddressHandler = (address: Address) => void;
 
 interface QuickAddAddressProps {
   onAdd: AddAddressHandler;
   onCancel: () => void;
+  isSaving: boolean;
 }
 
 export function AddressesPage() {
@@ -25,33 +28,75 @@ export function AddressesPage() {
 }
 
 function AddressesListing() {
-  const { items, add, remove } = useAddresses();
   const nav = useNavigate();
   const [q, setQ] = useState("");
   const [adding, setAdding] = useState(false);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
-  const filtered = useMemo(() => items.filter(a =>
-    !q || [a.code, a.name, a.town, a.country].some(v => v?.toLowerCase().includes(q.toLowerCase()))
-  ), [items, q]);
-  const { page, setPage, pageSize, setPageSize, paged, total } = usePaginated(filtered, 10);
+  const directory = useAddressDirectory({ page, pageSize, search: q });
+
+  const createSupplier = addresses.hooks.useCreateSupplier();
+  const createCustomer = addresses.hooks.useCreateCustomer();
+
+  const onCreateSuccess = (row: { id: string | number }) => {
+    toast.success("Address created");
+    setAdding(false);
+    nav({ to: "/address/$id", params: { id: String(row.id) } });
+  };
+
+  const onCreateError = (err: ApiError) => toast.error(err.message);
 
   const columns = [
-    { key: "code", header: "Code", width: "100px", sortValue: r => r.code, cell: r => <CopyableCode value={r.code} /> },
-    { key: "name", header: "Name", sortValue: r => r.name, cell: r => <span className="truncate block max-w-[320px]">{r.name}</span> },
-    { key: "type", header: "Type", width: "110px",
-      cell: r => <Pill variant={r.type === "Supplier" ? "info" : "primary"}>{r.type}</Pill> },
-    { key: "town", header: "Town", width: "140px", cell: r => <span>{r.town}</span> },
-    { key: "country", header: "Country", width: "120px", cell: r => <span>{r.country}</span> },
-    { key: "last", header: "Last Order", width: "120px", align: "right",
-      cell: r => <span className="text-muted-foreground tabular-nums">{r.lastOrder ?? "—"}</span> },
-    { key: "actions", header: "Actions", width: "90px", align: "right",
-      cell: r => (
+    {
+      key: "code",
+      header: "Code",
+      width: "100px",
+      sortValue: (r) => r.code,
+      cell: (r) => <CopyableCode value={r.code} />,
+    },
+    {
+      key: "name",
+      header: "Name",
+      sortValue: (r) => r.name,
+      cell: (r) => <span className="truncate block max-w-[320px]">{r.name}</span>,
+    },
+    {
+      key: "type",
+      header: "Type",
+      width: "110px",
+      cell: (r) => <Pill variant={r.type === "Supplier" ? "info" : "primary"}>{r.type}</Pill>,
+    },
+    { key: "town", header: "Town", width: "140px", cell: (r) => <span>{r.town}</span> },
+    { key: "country", header: "Country", width: "120px", cell: (r) => <span>{r.country}</span> },
+    {
+      key: "last",
+      header: "Last Order",
+      width: "120px",
+      align: "right",
+      cell: (r) => <span className="text-muted-foreground tabular-nums">{r.lastOrder ?? "—"}</span>,
+    },
+    {
+      key: "actions",
+      header: "Actions",
+      width: "90px",
+      align: "right",
+      cell: (r) => (
         <RowActions>
           <EditLink to="/address/$id" params={{ id: r.id }} title="Edit address" />
-          <DeleteButton onClick={() => { remove(r.id); toast.success("Removed"); }} />
         </RowActions>
-      ) },
+      ),
+    },
   ] satisfies Column<Address>[];
+
+  const isSaving = createSupplier.isPending || createCustomer.isPending;
+
+  const onQuickAdd = (address: Address) => {
+    const payload = addressToPayload(address);
+    const opts = { onSuccess: onCreateSuccess, onError: onCreateError };
+    if (address.type === "Supplier") createSupplier.mutate(payload, opts);
+    else createCustomer.mutate(payload, opts);
+  };
 
   return (
     <div>
@@ -60,61 +105,167 @@ function AddressesListing() {
         description="Customers and suppliers"
         actions={
           <>
-            <Button variant="outline" size="sm" className="h-8 gap-1.5" onClick={() => setAdding(v => !v)}>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 gap-1.5"
+              onClick={() => setAdding((v) => !v)}
+            >
               <Zap className="h-3.5 w-3.5" /> Quick Add
             </Button>
-            <Button size="sm" className="h-8 gap-1.5" onClick={() => nav({ to: "/address/$id", params: { id: "new" } })}>
+            <Button
+              size="sm"
+              className="h-8 gap-1.5"
+              onClick={() => nav({ to: "/address/$id", params: { id: "new" } })}
+            >
               <Plus className="h-3.5 w-3.5" /> Add Address
             </Button>
           </>
         }
       />
       <Toolbar>
-        <TableSearch value={q} onChange={setQ} placeholder="Search code, name, town…" />
+        <TableSearch
+          value={q}
+          onChange={(v) => {
+            setQ(v);
+            setPage(1);
+          }}
+          placeholder="Search code, name, town…"
+        />
         <div className="ml-auto">
-          <Button variant="outline" size="sm" className="h-8 gap-1.5"><Download className="h-3.5 w-3.5" /> Export</Button>
+          <Button variant="outline" size="sm" className="h-8 gap-1.5">
+            <Download className="h-3.5 w-3.5" /> Export
+          </Button>
         </div>
       </Toolbar>
-      <div className="px-5 py-3">
-        <DataTable
-          rows={paged}
-          columns={columns}
-          quickAddRow={adding ? <QuickAddAddress onAdd={(a) => { add(a); setAdding(false); }} onCancel={() => setAdding(false)} /> : undefined}
-          onRowClick={(r) => nav({ to: "/address/$id", params: { id: r.id } })}
-          emptyState={q ? "No addresses match your search." : "No addresses yet."}
-        />
-        <PaginationBar
-          page={page} pageSize={pageSize} total={total}
-          onPageChange={setPage} onPageSizeChange={setPageSize}
-        />
-      </div>
+
+      {directory.isPending ? (
+        <div className="flex items-center gap-2 px-5 py-8 text-sm text-muted-foreground">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          Loading addresses…
+        </div>
+      ) : directory.isError ? (
+        <div className="m-5 rounded-md border border-destructive/40 bg-destructive/5 p-4">
+          <p className="text-sm text-destructive">
+            {(directory.error as ApiError)?.message ?? "Failed to load addresses"}
+          </p>
+          <Button
+            variant="outline"
+            size="sm"
+            className="mt-3 h-8"
+            onClick={() => directory.refetch()}
+          >
+            Try again
+          </Button>
+        </div>
+      ) : (
+        <div className="px-5 py-3">
+          <DataTable
+            rows={directory.items}
+            rowKey={addressRowKey}
+            columns={columns}
+            quickAddRow={
+              adding ? (
+                <QuickAddAddress
+                  onAdd={onQuickAdd}
+                  onCancel={() => setAdding(false)}
+                  isSaving={isSaving}
+                />
+              ) : undefined
+            }
+            onRowClick={(r) => nav({ to: "/address/$id", params: { id: r.id } })}
+            emptyState={q ? "No addresses match your search." : "No addresses yet."}
+          />
+          <PaginationBar
+            page={directory.meta.page}
+            pageSize={directory.meta.pageSize}
+            total={directory.meta.total}
+            onPageChange={setPage}
+            onPageSizeChange={(n) => {
+              setPageSize(n);
+              setPage(1);
+            }}
+          />
+        </div>
+      )}
     </div>
   );
 }
 
-function QuickAddAddress({ onAdd, onCancel }: QuickAddAddressProps) {
-  const [draft, setDraft] = useState({ code: "", name: "", type: "Customer" as AddressType, town: "", country: "" });
+function QuickAddAddress({ onAdd, onCancel, isSaving }: QuickAddAddressProps) {
+  const [draft, setDraft] = useState({
+    code: "",
+    name: "",
+    type: "Customer" as AddressType,
+    town: "",
+    country: "",
+  });
   const submit = () => {
-    if (!draft.code || !draft.name) { toast.error("Code and Name are required"); return; }
+    if (!draft.code || !draft.name) {
+      toast.error("Code and Name are required");
+      return;
+    }
     onAdd({
-      id: `a_${Date.now()}`, code: draft.code, name: draft.name, type: draft.type,
-      address1: "", town: draft.town, country: draft.country || "—",
+      id: "",
+      code: draft.code,
+      name: draft.name,
+      type: draft.type,
+      address1: draft.town || "—",
+      town: draft.town,
+      country: draft.country || "—",
     });
-    toast.success("Address added");
   };
   return (
     <div className="flex items-center gap-2 px-3 py-1.5">
       <Plus className="h-3.5 w-3.5 text-muted-foreground" />
-      <Input autoFocus placeholder="Code" value={draft.code} onChange={e => setDraft(d => ({ ...d, code: e.target.value }))} className="h-7 w-24 text-[13px] font-mono" onKeyDown={e => e.key === "Enter" && submit()} />
-      <Input placeholder="Name" value={draft.name} onChange={e => setDraft(d => ({ ...d, name: e.target.value }))} className="h-7 flex-1 text-[13px]" onKeyDown={e => e.key === "Enter" && submit()} />
-      <select value={draft.type} onChange={e => setDraft(d => ({ ...d, type: e.target.value as AddressType }))} className="h-7 px-2 rounded border border-border bg-background text-[13px]">
+      <Input
+        autoFocus
+        placeholder="Code"
+        value={draft.code}
+        onChange={(e) => setDraft((d) => ({ ...d, code: e.target.value }))}
+        className="h-7 w-24 text-[13px] font-mono"
+        onKeyDown={(e) => e.key === "Enter" && submit()}
+        disabled={isSaving}
+      />
+      <Input
+        placeholder="Name"
+        value={draft.name}
+        onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))}
+        className="h-7 flex-1 text-[13px]"
+        onKeyDown={(e) => e.key === "Enter" && submit()}
+        disabled={isSaving}
+      />
+      <select
+        value={draft.type}
+        onChange={(e) => setDraft((d) => ({ ...d, type: e.target.value as AddressType }))}
+        className="h-7 px-2 rounded border border-border bg-background text-[13px]"
+        disabled={isSaving}
+      >
         <option value="Customer">Customer</option>
         <option value="Supplier">Supplier</option>
       </select>
-      <Input placeholder="Town" value={draft.town} onChange={e => setDraft(d => ({ ...d, town: e.target.value }))} className="h-7 w-32 text-[13px]" onKeyDown={e => e.key === "Enter" && submit()} />
-      <Input placeholder="Country" value={draft.country} onChange={e => setDraft(d => ({ ...d, country: e.target.value }))} className="h-7 w-28 text-[13px]" onKeyDown={e => e.key === "Enter" && submit()} />
-      <Button size="sm" className="h-7" onClick={submit}>Add</Button>
-      <Button size="sm" variant="ghost" className="h-7" onClick={onCancel}>Cancel</Button>
+      <Input
+        placeholder="Town"
+        value={draft.town}
+        onChange={(e) => setDraft((d) => ({ ...d, town: e.target.value }))}
+        className="h-7 w-32 text-[13px]"
+        onKeyDown={(e) => e.key === "Enter" && submit()}
+        disabled={isSaving}
+      />
+      <Input
+        placeholder="Country"
+        value={draft.country}
+        onChange={(e) => setDraft((d) => ({ ...d, country: e.target.value }))}
+        className="h-7 w-28 text-[13px]"
+        onKeyDown={(e) => e.key === "Enter" && submit()}
+        disabled={isSaving}
+      />
+      <Button size="sm" className="h-7" onClick={submit} disabled={isSaving}>
+        {isSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Add"}
+      </Button>
+      <Button size="sm" variant="ghost" className="h-7" onClick={onCancel} disabled={isSaving}>
+        Cancel
+      </Button>
     </div>
   );
 }

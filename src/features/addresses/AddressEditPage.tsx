@@ -1,7 +1,8 @@
 import { getRouteApi, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
-import { Trash2, Save } from "lucide-react";
-import { useAddresses } from "@/store";
+import { useEffect, useState } from "react";
+import { Loader2, Save } from "lucide-react";
+import { addresses } from "@/api/address";
+import type { ApiError } from "@/api/_client";
 import { EditScreen, EditCard, StickyFormFooter } from "@/components/edit-screen";
 import { Field, FormGrid } from "@/components/form-primitives";
 import { Button } from "@/components/ui/button";
@@ -10,6 +11,8 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Pill } from "@/components/pill";
 import { toast } from "sonner";
 import type { Address, AddressType, AddressFlags } from "@/lib/types";
+import { useAddressDetail } from "./hooks";
+import { addressToPayload, mapRowToAddress } from "./map-address";
 
 const routeApi = getRouteApi("/address/$id");
 
@@ -43,31 +46,79 @@ function blankAddress(): Address {
 export function AddressEditPage() {
   const { id } = routeApi.useParams();
   const nav = useNavigate();
-  const { items, add, update, remove } = useAddresses();
   const isNew = id === "new";
-  const item = isNew ? undefined : items.find(i => i.id === id);
-  const [draft, setDraft] = useState<Address | undefined>(isNew ? blankAddress() : item);
+  const [draft, setDraft] = useState<Address>(() => blankAddress());
 
-  if (!isNew && (!item || !draft)) {
+  const detailQuery = useAddressDetail(id, !isNew);
+
+  useEffect(() => {
+    if (isNew) {
+      setDraft(blankAddress());
+      return;
+    }
+    if (detailQuery.data) {
+      setDraft(mapRowToAddress(detailQuery.data));
+    }
+  }, [isNew, detailQuery.data]);
+
+  const createSupplier = addresses.hooks.useCreateSupplier();
+  const createCustomer = addresses.hooks.useCreateCustomer();
+  const updateAddress = addresses.hooks.useUpdate();
+
+  const isSaving =
+    createSupplier.isPending || createCustomer.isPending || updateAddress.isPending;
+
+  if (!isNew && detailQuery.isPending) {
     return (
-      <EditScreen backTo="/addresses" title="Address not found">
-        <p className="text-muted-foreground text-[13px]">This address may have been deleted.</p>
+      <EditScreen backTo="/addresses" title="Loading address…">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          Loading…
+        </div>
       </EditScreen>
     );
   }
-  if (!draft) return null;
 
-  const set = <K extends keyof Address>(k: K, v: Address[K]) => setDraft(d => ({ ...(d as Address), [k]: v }));
+  if (!isNew && detailQuery.isError) {
+    return (
+      <EditScreen backTo="/addresses" title="Address not found">
+        <p className="text-muted-foreground text-[13px]">
+          {(detailQuery.error as ApiError)?.message ?? "This address may have been deleted."}
+        </p>
+        <Button variant="outline" size="sm" className="mt-3 h-8" onClick={() => detailQuery.refetch()}>
+          Try again
+        </Button>
+      </EditScreen>
+    );
+  }
+
+  const set = <K extends keyof Address>(k: K, v: Address[K]) => setDraft(d => ({ ...d, [k]: v }));
   const setFlag = (k: keyof AddressFlags, v: boolean) =>
-    setDraft(d => ({ ...(d as Address), flags: { ...(d as Address).flags, [k]: v } }));
+    setDraft(d => ({ ...d, flags: { ...d.flags, [k]: v } }));
 
   const save = () => {
     if (!draft.code || !draft.name) { toast.error("Code and Name are required"); return; }
-    if (isNew) { add(draft); toast.success("Address created"); }
-    else { update(draft.id, draft); toast.success("Address saved"); }
-    nav({ to: "/addresses" });
+    const payload = addressToPayload(draft);
+    if (isNew) {
+      const createOpts = {
+        onSuccess: (row: { id: string | number }) => {
+          toast.success("Address created");
+          nav({ to: "/address/$id", params: { id: String(row.id) } });
+        },
+        onError: (err: ApiError) => toast.error(err.message),
+      };
+      if (draft.type === "Supplier") createSupplier.mutate(payload, createOpts);
+      else createCustomer.mutate(payload, createOpts);
+      return;
+    }
+    updateAddress.mutate(
+      { id: draft.id, data: payload },
+      {
+        onSuccess: () => toast.success("Address saved"),
+        onError: (err: ApiError) => toast.error(err.message),
+      },
+    );
   };
-  const onDelete = () => { if (isNew) { nav({ to: "/addresses" }); return; } remove(draft.id); toast.success("Removed"); nav({ to: "/addresses" }); };
 
   const f = draft.flags ?? {};
 
@@ -78,14 +129,10 @@ export function AddressEditPage() {
       title={isNew ? "New Address" : (draft.name || draft.code)}
       badges={<Pill variant={draft.type === "Supplier" ? "info" : "primary"}>{draft.type}</Pill>}
       actions={
-        <>
-          {!isNew && (
-            <Button variant="outline" size="sm" className="h-8 gap-1.5 text-destructive hover:text-destructive" onClick={onDelete}>
-              <Trash2 className="h-3.5 w-3.5" /> Delete
-            </Button>
-          )}
-          <Button size="sm" className="h-8 gap-1.5" onClick={save}><Save className="h-3.5 w-3.5" /> {isNew ? "Create" : "Save"}</Button>
-        </>
+        <Button size="sm" className="h-8 gap-1.5" onClick={save} disabled={isSaving}>
+          {isSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+          {isNew ? "Create" : "Save"}
+        </Button>
       }
     >
       {/* Header identity strip */}
@@ -336,8 +383,11 @@ export function AddressEditPage() {
       </Tabs>
 
       <StickyFormFooter>
-        <Button variant="outline" size="sm" onClick={() => nav({ to: "/addresses" })}>Cancel</Button>
-        <Button size="sm" className="gap-1.5" onClick={save}><Save className="h-3.5 w-3.5" /> Save Address</Button>
+        <Button variant="outline" size="sm" onClick={() => nav({ to: "/addresses" })} disabled={isSaving}>Cancel</Button>
+        <Button size="sm" className="gap-1.5" onClick={save} disabled={isSaving}>
+          {isSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+          Save Address
+        </Button>
       </StickyFormFooter>
     </EditScreen>
   );

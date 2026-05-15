@@ -1,4 +1,5 @@
 import type { Resource } from "@/api/_client";
+import type { Column } from "@/components/data-table";
 import type { SettingsGroup } from "@/lib/settings-nav";
 
 // ---------------------------------------------------------------------------
@@ -27,16 +28,6 @@ export interface FieldDef {
   maxLength?: number;
 }
 
-export interface SettingsResourceEntry {
-  resource: SettingsResource;
-  /** Singular noun used in "Add X" / "Edit X" copy. */
-  singular: string;
-  /** Plural noun used in empty/search copy. */
-  plural: string;
-  /** Fields rendered in the inline create/edit form, in display order. */
-  fields: FieldDef[];
-}
-
 // ---------------------------------------------------------------------------
 // Inline editor state machine.
 // ---------------------------------------------------------------------------
@@ -51,6 +42,41 @@ export type FormMode = { kind: "create" } | { kind: "edit"; id: string };
 export type FormValues = Record<string, string>;
 export type FormErrors = Record<string, string | undefined>;
 export type FormPayload = Record<string, string | null>;
+
+/** Passed to default and custom listing column builders. */
+export interface BuildListingColumnsContext {
+  /** Registry entry for this slug (read `fields`, `singular`, etc.). */
+  entry: SettingsResourceEntry;
+  editing: EditingState;
+  onEdit: (id: string) => void;
+  onDelete: (id: string) => void;
+}
+
+/** Override per slug when the default Name / Code / Actions table is not enough. */
+export type BuildListingColumnsFn = (
+  ctx: BuildListingColumnsContext,
+) => Column<SettingItemLike>[];
+
+export interface SettingsResourceEntry {
+  resource: SettingsResource;
+  /** Singular noun used in "Add X" / "Edit X" copy. */
+  singular: string;
+  /** Plural noun used in empty/search copy. */
+  plural: string;
+  bodyKey: string;
+  /** Fields rendered in the inline create/edit form, in display order. */
+  fields: FieldDef[];
+  /**
+   * Maps validated form values to the flat object nested under the Rails
+   * param key (see `createResource` `bodyKey`).
+   */
+  mapWritePayload?: (payload: FormPayload) => Record<string, unknown>;
+  /**
+   * Custom table columns for this resource. When omitted, the shared
+   * default listing (name, code/details summary, actions) is used.
+   */
+  buildListingColumns?: BuildListingColumnsFn;
+}
 
 // ---------------------------------------------------------------------------
 // Sidebar (legacy `SettingsPage` shell).

@@ -1,7 +1,9 @@
 import { getRouteApi, useNavigate } from "@tanstack/react-router";
-import { useState, useMemo } from "react";
-import { Trash2, Save, ExternalLink, Plus } from "lucide-react";
-import { useStocks, useSettings } from "@/store";
+import { useEffect, useMemo, useState } from "react";
+import { Trash2, Save, ExternalLink, Plus, Loader2 } from "lucide-react";
+import { stocks } from "@/api/stocks";
+import type { ApiError } from "@/api/_client";
+import { useSettings } from "@/store";
 import { EditScreen, EditCard, StickyFormFooter } from "@/components/edit-screen";
 import { Field, FormGrid } from "@/components/form-primitives";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -11,6 +13,8 @@ import { Pill } from "@/components/pill";
 import { CopyableCode } from "@/components/app-shell";
 import { toast } from "sonner";
 import type { StockItem, StockMaterialRowUpdate } from "@/lib/types";
+import { useStockDetail } from "./hooks";
+import { mapRowToStockItem, stockItemToPayload } from "./map-stock";
 
 const routeApi = getRouteApi("/stock/$id");
 
@@ -50,38 +54,102 @@ function blankStock(): StockItem {
 export function StockEditPage() {
   const { id } = routeApi.useParams();
   const nav = useNavigate();
-  const { items, add, update, remove } = useStocks();
   const isNew = id === "new";
-  const item = isNew ? undefined : items.find(i => i.id === id);
   const settings = useSettings(s => s.catalogs);
 
   const categoryOpts = useMemo(() => (settings.category ?? []).map(c => c.name), [settings]);
   const colourOpts = useMemo(() => (settings.colours ?? []).map(c => c.name), [settings]);
   const sizeOpts = useMemo(() => (settings.sizes ?? []).map(c => c.name), [settings]);
 
-  const [draft, setDraft] = useState<StockItem | undefined>(isNew ? blankStock() : item);
+  const [draft, setDraft] = useState<StockItem>(() => blankStock());
+  const detailQuery = useStockDetail(id, !isNew);
 
-  if (!isNew && (!item || !draft)) {
+  useEffect(() => {
+    if (isNew) {
+      setDraft(blankStock());
+      return;
+    }
+    if (detailQuery.data) {
+      setDraft(mapRowToStockItem(detailQuery.data));
+    }
+  }, [isNew, detailQuery.data]);
+
+  const createStock = stocks.hooks.useCreate({
+    onSuccess: (row) => {
+      toast.success("Stock created");
+      nav({ to: "/stock/$id", params: { id: String(row.id) } });
+    },
+    onError: (err: ApiError) => toast.error(err.message),
+  });
+
+  const updateStock = stocks.hooks.useUpdate({
+    onSuccess: () => toast.success("Stock saved"),
+    onError: (err: ApiError) => toast.error(err.message),
+  });
+
+  const deleteStock = stocks.hooks.useDelete({
+    onSuccess: () => {
+      toast.success(`Removed ${draft.code}`);
+      nav({ to: "/stocks" });
+    },
+    onError: (err: ApiError) => toast.error(err.message),
+  });
+
+  const isSaving = createStock.isPending || updateStock.isPending;
+
+  if (!isNew && detailQuery.isPending) {
     return (
-      <EditScreen backTo="/stocks" title="Stock not found">
-        <p className="text-muted-foreground text-[13px]">This item may have been deleted.</p>
+      <EditScreen backTo="/stocks" title="Loading stock…">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          Loading…
+        </div>
       </EditScreen>
     );
   }
-  if (!draft) return null;
 
-  const set = <K extends keyof StockItem>(k: K, v: StockItem[K]) => setDraft(d => ({ ...(d as StockItem), [k]: v }));
+  if (!isNew && detailQuery.isError) {
+    return (
+      <EditScreen backTo="/stocks" title="Stock not found">
+        <p className="text-muted-foreground text-[13px]">
+          {(detailQuery.error as ApiError)?.message ?? "This item may have been deleted."}
+        </p>
+        <Button variant="outline" size="sm" className="mt-3 h-8" onClick={() => detailQuery.refetch()}>
+          Try again
+        </Button>
+      </EditScreen>
+    );
+  }
+
+  const set = <K extends keyof StockItem>(k: K, v: StockItem[K]) => setDraft(d => ({ ...d, [k]: v }));
   const setFlag = (code: string, v: boolean) => set("flagCodes", { ...(draft.flagCodes ?? {}), [code]: v });
 
   const save = () => {
     if (!draft.code || !draft.title) { toast.error("Code and Title are required"); return; }
-    const onHand = Number(draft.onHand) || 0;
-    const status: StockItem["status"] = onHand === 0 ? "out" : onHand < draft.reorderLevel ? "low" : "active";
-    if (isNew) { add({ ...draft, code: draft.code.toUpperCase(), status }); toast.success("Stock created"); }
-    else { update(draft.id, { ...draft, status }); toast.success("Stock saved"); }
-    nav({ to: "/stocks" });
+    const payload = stockItemToPayload({ ...draft, code: draft.code.toUpperCase() });
+    if (isNew) createStock.mutate(payload);
+    else updateStock.mutate({ id: draft.id, data: payload });
   };
-  const onDelete = () => { if (isNew) { nav({ to: "/stocks" }); return; } remove(draft.id); toast.success(`Removed ${draft.code}`); nav({ to: "/stocks" }); };
+
+  const onDelete = () => {
+    if (isNew) { nav({ to: "/stocks" }); return; }
+    deleteStock.mutate({ id: draft.id });
+  };
+
+  const onGenerateBarcodes = async () => {
+    try {
+      const result = await stocks.api.generateBarcode();
+      const barcode = String(result.barcode ?? "");
+      if (barcode) {
+        setDraft(d => ({ ...d, packBarcode: barcode, retailBarcode: barcode }));
+        toast.success("Barcodes generated");
+      } else {
+        toast.info("No barcode returned from API");
+      }
+    } catch (err) {
+      toast.error((err as ApiError)?.message ?? "Failed to generate barcodes");
+    }
+  };
 
   const materials = draft.materials ?? [];
   const setMaterial = (idx: number, patch: StockMaterialRowUpdate) => {
@@ -110,7 +178,10 @@ export function StockEditPage() {
               <Trash2 className="h-3.5 w-3.5" /> Delete
             </Button>
           )}
-          <Button size="sm" className="h-8 gap-1.5" onClick={save}><Save className="h-3.5 w-3.5" /> {isNew ? "Create" : "Update"}</Button>
+          <Button size="sm" className="h-8 gap-1.5" onClick={save} disabled={isSaving}>
+            {isSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+            {isNew ? "Create" : "Update"}
+          </Button>
         </>
       }
     >
@@ -201,7 +272,7 @@ export function StockEditPage() {
                   <Field label="Pack Barcode"><Input value={draft.packBarcode ?? ""} onChange={e => set("packBarcode", e.target.value)} className={MONO} /></Field>
                   <Field label="Retail Barcode"><Input value={draft.retailBarcode ?? ""} onChange={e => set("retailBarcode", e.target.value)} className={MONO} /></Field>
                 </FormGrid>
-                <Button size="sm" className="mt-3 h-8 w-full" onClick={() => toast.success("Barcodes generated")}>Get Barcode Numbers</Button>
+                <Button size="sm" className="mt-3 h-8 w-full" onClick={() => void onGenerateBarcodes()}>Get Barcode Numbers</Button>
               </EditCard>
 
               <EditCard title="Materials & Compositions">
@@ -550,8 +621,11 @@ export function StockEditPage() {
       </Tabs>
 
       <StickyFormFooter>
-        <Button variant="outline" size="sm" onClick={() => nav({ to: "/stocks" })}>Cancel</Button>
-        <Button size="sm" className="gap-1.5" onClick={save}><Save className="h-3.5 w-3.5" /> Update</Button>
+        <Button variant="outline" size="sm" onClick={() => nav({ to: "/stocks" })} disabled={isSaving}>Cancel</Button>
+        <Button size="sm" className="gap-1.5" onClick={save} disabled={isSaving}>
+          {isSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+          {isNew ? "Create" : "Update"}
+        </Button>
       </StickyFormFooter>
     </EditScreen>
   );

@@ -9,9 +9,7 @@ import { ApiError } from "./errors";
 import type { QueryMeta } from "./types";
 
 interface CreateQueryClientOptions {
-  /** Called once when an unrefreshable 401 reaches the cache. */
   onAuthError: () => void;
-  /** Display a user-facing notification (sonner, etc.). */
   notify: (message: string, kind: "error" | "info") => void;
 }
 

@@ -17,21 +17,22 @@ export const DEFAULT_PAGE_SIZE = 25;
 // Form
 // ---------------------------------------------------------------------------
 
-/** Fields shared by most catalog-style settings (name + description). */
-export const COMMON_FIELDS: FieldDef[] = [
+/** @deprecated Prefer importing `F_CODE_NAME` from `./fields`. */
+export const COMMON_FIELDS_FOR_FORM: FieldDef[] = [
+  {
+    name: "code",
+    label: "Code",
+    kind: "text",
+    required: true,
+    placeholder: "Short code",
+    maxLength: 80,
+  },
   {
     name: "name",
     label: "Name",
     kind: "text",
     required: true,
-    placeholder: "Enter a name",
-    maxLength: 120,
-  },
-  {
-    name: "description",
-    label: "Description",
-    kind: "textarea",
-    placeholder: "Optional notes…",
-    maxLength: 500,
+    placeholder: "Display name",
+    maxLength: 200,
   },
 ];

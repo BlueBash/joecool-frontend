@@ -12,17 +12,16 @@ import type { ApiError } from "./errors";
 import type { ID, ListParams, Paginated } from "./types";
 import type { ResourceKeys } from "./query-keys";
 
-/**
- * Per-resource configuration consumed by `createResource`.
- *
- * Keep this minimal — anything beyond CRUD belongs in a sibling file
- * that composes the resource (see `stocks/stocks.ts` for the pattern).
- */
 export interface ResourceConfig<TEntity, TCreate, TUpdate> {
   /** Hierarchical query-key scope, e.g. ["stock-settings", "categories"]. */
   scope: readonly string[];
   /** REST path relative to the platform base, e.g. "/stock_settings/categories". */
   path: string;
+  /**
+   * When set, create/update bodies are wrapped as `{ [bodyKey]: payload }`
+   * (Rails-style nested attributes).
+   */
+  bodyKey?: string;
   /** Override the per-id path. Defaults to `${path}/${id}`. */
   pathFor?: (id: ID) => string;
   /** HTTP verb for update. Defaults to PATCH (matches JoeCool spec). */
@@ -31,19 +30,21 @@ export interface ResourceConfig<TEntity, TCreate, TUpdate> {
   onMutate?: (qc: QueryClient) => void;
   /** Params applied to every list call (e.g. a hardcoded type filter). */
   defaultListParams?: ListParams;
+  /** Params applied to every detail call (e.g. JSON:API `include`). */
+  defaultDetailParams?: ListParams;
   /** Optional runtime shaping of API responses. */
   transform?: {
     entity?: (raw: unknown) => TEntity;
-    list?: (raw: unknown) => Paginated<TEntity>;
+    list?: (raw: unknown, listParams?: ListParams) => Paginated<TEntity>;
   };
 }
 
 export interface ResourceApi<TEntity, TCreate, TUpdate> {
   list: (params?: ListParams) => Promise<Paginated<TEntity>>;
-  detail: (id: ID) => Promise<TEntity>;
+  detail: (id: ID, params?: ListParams) => Promise<TEntity>;
   create: (payload: TCreate) => Promise<TEntity>;
   update: (id: ID, payload: TUpdate) => Promise<TEntity>;
-  remove: (id: ID) => Promise<void>;
+  delete: (id: ID) => Promise<void>;
 }
 
 export interface ResourceQueryFactories<TEntity> {

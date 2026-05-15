@@ -27,43 +27,42 @@ import type {
 
 export function SettingsPage() {
   const path = useRouterState({ select: (s) => s.location.pathname });
-
-  if (path === "/settings" || path === "/settings/") {
-    return <Navigate to={SETTINGS_DEFAULT_PATH as never} replace />;
-  }
-
-  const activeSection = settingsPathToSlug(path);
+  const isSettingsRoot = path === "/settings" || path === "/settings/";
+  const activeSection = settingsPathToSlug(isSettingsRoot ? SETTINGS_DEFAULT_PATH : path);
   const trail = findSettingsTrail(activeSection);
   const activeGroupSlugs = new Set(trail?.groups.map((g) => g.slug) ?? []);
 
   const expandedFromTrail = useMemo(() => {
+    const sectionTrail = findSettingsTrail(activeSection);
     const map: Record<string, string> = {};
-    if (!trail?.groups.length) return map;
-    for (let i = 0; i < trail.groups.length; i++) {
-      const g = trail.groups[i];
+    if (!sectionTrail?.groups.length) return map;
+    for (let i = 0; i < sectionTrail.groups.length; i++) {
+      const g = sectionTrail.groups[i];
       if (i === 0) {
         map[SETTINGS_SIDEBAR_ROOT_PARENT_KEY] = g.slug;
       } else {
-        map[trail.groups[i - 1].slug] = g.slug;
+        map[sectionTrail.groups[i - 1].slug] = g.slug;
       }
     }
     return map;
-  }, [trail]);
+  }, [activeSection]);
 
   const [expandedByParent, setExpandedByParent] =
     useState<SettingsSidebarExpandedByParent>(expandedFromTrail);
 
   useEffect(() => {
     setExpandedByParent((prev) => {
+      let changed = false;
       const next = { ...prev };
 
       for (const [parent, slug] of Object.entries(expandedFromTrail)) {
         if (!next[parent]) {
           next[parent] = slug;
+          changed = true;
         }
       }
 
-      return next;
+      return changed ? next : prev;
     });
   }, [expandedFromTrail]);
 
@@ -78,6 +77,10 @@ export function SettingsPage() {
       return next;
     });
   }, []);
+
+  if (isSettingsRoot) {
+    return <Navigate to={SETTINGS_DEFAULT_PATH as never} replace />;
+  }
 
   return (
     <div>
@@ -129,7 +132,7 @@ function SidebarGroup({
     let n = 0;
     const walk = (g: SettingsGroup) => {
       g.sections?.forEach((s) => {
-        n += catalogs[s.slug]?.length ?? 0;
+        n += catalogs[s.countKey ?? s.slug]?.length ?? 0;
       });
       g.groups?.forEach(walk);
     };
@@ -267,7 +270,6 @@ function SidebarGroup({
         {Icon && depth === 0 && <Icon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />}
         <span className="flex-1 text-left truncate">{group.label}</span>
       </button>
-
       {open && (
         <ul className="mt-0.5 space-y-0.5">
           {group.sections?.map((s) => {
@@ -309,12 +311,9 @@ function SidebarGroup({
 
 function StockSubgroupRow({ group, depth, activeGroupSlugs }: StockSubgroupRowProps) {
   const first = firstSection(group);
-  debugger
   const to = first ? slugToSettingsPath(first.slug) : "/settings";
-
   const isActive = activeGroupSlugs.has(group.slug);
   const rowIndent = depth === 1 ? "pl-9 pr-2.5" : "pl-12 pr-2.5";
-
   return (
     <Link
       to={to}
