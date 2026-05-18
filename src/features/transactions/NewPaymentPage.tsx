@@ -1,9 +1,14 @@
 import { useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
+import { FormProvider, useForm, useFormContext } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { ArrowLeft, ArrowRight, Save, Search } from "lucide-react";
 import { useAddresses, useTxns } from "@/store";
 import { EditScreen, EditCard } from "@/components/edit-screen";
+import { FormNumberField, FormSelectField, FormTextField } from "@/components/form";
 import { Field, FormGrid } from "@/components/form-primitives";
+import { firstFormErrorMessage } from "@/lib/form";
+import { PaymentFormSchema, type PaymentFormValues } from "./transaction-form-schema";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Pill } from "@/components/pill";
@@ -21,31 +26,39 @@ export function NewPaymentPage() {
   const addTxn = useTxns((s) => s.add);
 
   const [step, setStep] = useState<0 | 1>(0);
-  const [form, setForm] = useState({
-    refMain: "",
-    customerCode: "",
-    date: "",
-    amount: 0,
-    currency: "GBP",
-    payMethod: "BANK",
-    bankAcct: "",
-    bankCurrency: "GBP",
-    transRef: "",
-    auditRef: "",
-    profCentre: "MAIN",
-    taxPeriod: "",
-    comment: "",
+
+  const paymentForm = useForm<PaymentFormValues>({
+    resolver: zodResolver(PaymentFormSchema),
+    defaultValues: {
+      refMain: "",
+      customerCode: "",
+      date: "",
+      amount: 0,
+      currency: "GBP",
+      payMethod: "BANK",
+      bankAcct: "",
+      bankCurrency: "GBP",
+      transRef: "",
+      auditRef: "",
+      profCentre: "MAIN",
+      taxPeriod: "",
+      comment: "",
+    },
+    mode: "onTouched",
   });
+
+  const form = paymentForm.watch();
+
   useEffect(() => {
     const today = new Date().toISOString().slice(0, 10);
-    setForm((f) => ({
-      ...f,
-      refMain: f.refMain || `PMT-${String(Date.now()).slice(-5)}`,
-      date: f.date || today,
-      taxPeriod: f.taxPeriod || today.slice(0, 7),
-    }));
-  }, []);
-  const set = <K extends keyof typeof form>(k: K, v: (typeof form)[K]) => setForm((f) => ({ ...f, [k]: v }));
+    const current = paymentForm.getValues();
+    paymentForm.reset({
+      ...current,
+      refMain: current.refMain || `PMT-${String(Date.now()).slice(-5)}`,
+      date: current.date || today,
+      taxPeriod: current.taxPeriod || today.slice(0, 7),
+    });
+  }, [paymentForm]);
 
   const customer = useMemo(
     () => customers.find((c) => c.code === form.customerCode) ?? null,
@@ -120,14 +133,19 @@ export function NewPaymentPage() {
       }
     >
       {step === 0 && (
-        <PaymentFormStep
-          form={form}
-          set={set}
-          customers={customers}
-          customer={customer}
-          onCancel={() => nav({ to: "/transactions" })}
-          onNext={() => customer && form.amount > 0 && setStep(1)}
-        />
+        <FormProvider {...paymentForm}>
+          <PaymentFormStep
+            customers={customers}
+            customer={customer}
+            onCancel={() => nav({ to: "/transactions" })}
+            onNext={paymentForm.handleSubmit(
+              () => setStep(1),
+              (errors) => {
+                toast.error(firstFormErrorMessage(errors) ?? "Please fix the highlighted fields");
+              },
+            )}
+          />
+        </FormProvider>
       )}
 
       {step === 1 && customer && (
@@ -216,17 +234,7 @@ export function NewPaymentPage() {
   );
 }
 
-type PaymentForm = {
-  refMain: string; customerCode: string; date: string; amount: number; currency: string;
-  payMethod: string; bankAcct: string; bankCurrency: string; transRef: string; auditRef: string;
-  profCentre: string; taxPeriod: string; comment: string;
-};
-
-type PaymentFormSetter = <K extends keyof PaymentForm>(key: K, value: PaymentForm[K]) => void;
-
 interface PaymentFormStepProps {
-  form: PaymentForm;
-  set: PaymentFormSetter;
   customers: Address[];
   customer: Address | null;
   onCancel: () => void;
@@ -234,8 +242,12 @@ interface PaymentFormStepProps {
 }
 
 function PaymentFormStep({
-  form, set, customers, customer, onCancel, onNext,
+  customers, customer, onCancel, onNext,
 }: PaymentFormStepProps) {
+  const { watch, setValue, formState: { isSubmitting } } = useFormContext<PaymentFormValues>();
+  const form = watch();
+  const set = <K extends keyof PaymentFormValues>(k: K, v: PaymentFormValues[K]) =>
+    setValue(k, v as never, { shouldDirty: true, shouldTouch: true });
   const [q, setQ] = useState("");
   const matches = useMemo(() => {
     const term = q.toLowerCase();
@@ -325,7 +337,7 @@ function PaymentFormStep({
 
       <div className="flex items-center justify-end gap-2 mt-2">
         <Button variant="outline" size="sm" onClick={onCancel}>Cancel</Button>
-        <Button size="sm" onClick={onNext} disabled={!customer || !form.amount} className="gap-1.5">
+        <Button type="button" size="sm" onClick={onNext} disabled={isSubmitting} className="gap-1.5">
           Next: Allocate <ArrowRight className="h-3.5 w-3.5" />
         </Button>
       </div>

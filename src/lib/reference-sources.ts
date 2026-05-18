@@ -1,0 +1,116 @@
+import type { ListParams, Paginated } from "@/api/_client";
+import * as addressSettings from "@/api/address-settings/catalogs";
+import * as platform from "@/api/platform/catalogs";
+import { stockBuyers } from "@/api/stock-buyers";
+import { stockPriceCategories } from "@/api/stocks";
+import {
+  stockAssortments,
+  stockCategories,
+  stockCategoryGroups,
+  stockCollections,
+  stockColourOptions,
+  stockColours,
+  stockCustomTarrifCodes,
+  stockDimensionMeasures,
+  stockDimensionPackAssortments,
+  stockDimensionSpecs,
+  stockDisplays,
+  stockFittingSizeMeasures,
+  stockFittingSizePackAssortments,
+  stockFittingSizeSpecs,
+  stockPackagings,
+  stockRingSizes,
+  stockSelections,
+  stockTargetGenders,
+  stockUnits,
+} from "@/api/settings/stock/stock";
+import { suppliers } from "@/api/suppliers";
+import type { ReferenceKlassName } from "@/lib/reference-registry";
+import { referenceLabel, type ReferenceOption } from "@/lib/reference";
+
+/** Match legacy app bulk-fetch for select dropdowns. */
+export const REFERENCE_LIST_LIMIT = 3000;
+
+type CatalogRow = { id: string | number; name?: string; code?: string; [key: string]: unknown };
+
+type ListFn = (params?: ListParams) => Promise<Paginated<CatalogRow>>;
+
+function bindList(list: ListFn, extra?: ListParams): ListFn {
+  return (params) => list({ limit: REFERENCE_LIST_LIMIT, ...extra, ...params });
+}
+
+/** Maps logical klass keys → existing platform list APIs (no `/autocompletes`). */
+export const REFERENCE_SOURCES: Record<ReferenceKlassName, ListFn> = {
+  "StockSettings::Category": bindList(stockCategories.api.list),
+  "StockSettings::CategoryGroup": bindList(stockCategoryGroups.api.list),
+  "StockSettings::Colour": bindList(stockColours.api.list),
+  "StockSettings::ColourOption": bindList(stockColourOptions.api.list),
+  "StockSettings::Display": bindList(stockDisplays.api.list),
+  "StockSettings::Assortment": bindList(stockAssortments.api.list),
+  "StockSettings::Collection": bindList(stockCollections.api.list),
+  "StockSettings::Selection": bindList(stockSelections.api.list),
+  "StockSettings::TargetGender": bindList(stockTargetGenders.api.list),
+  "StockSettings::Unit": bindList(stockUnits.api.list),
+  "StockSettings::Packaging": bindList(stockPackagings.api.list),
+  "StockSettings::CustomTariffCode": bindList(stockCustomTarrifCodes.api.list),
+  "StockSettings::RingSize": bindList(stockRingSizes.api.list),
+  "StockSettings::FittingSizePackAssortment": bindList(stockFittingSizePackAssortments.api.list),
+  "StockSettings::FittingSizeMeasure": bindList(stockFittingSizeMeasures.api.list),
+  "StockSettings::FittingSizeSpec": bindList(stockFittingSizeSpecs.api.list),
+  "StockSettings::DimensionPackAssortment": bindList(stockDimensionPackAssortments.api.list),
+  "StockSettings::DimensionMeasure": bindList(stockDimensionMeasures.api.list),
+  "StockSettings::DimensionSpec": bindList(stockDimensionSpecs.api.list),
+  VatRateCode: bindList(platform.vatRateCodes.api.list),
+  StockBuyer: bindList(stockBuyers.api.list),
+  Supplier: bindList(suppliers.api.list),
+  Country: bindList(platform.countries.api.list),
+  "AddressSettings::Category": bindList(addressSettings.addressSettingCategories.api.list),
+  Area: bindList(platform.areas.api.list),
+  "AddressSettings::AccountManager": bindList(addressSettings.addressAccountManagers.api.list),
+  "AddressSettings::Agent": bindList(addressSettings.addressAgents.api.list),
+  ProfitCentre: bindList(platform.profitCentres.api.list),
+  InvoiceEnvironment: bindList(platform.invoiceEnvironments.api.list),
+  "Stock::PriceCategory": bindList(stockPriceCategories.api.list),
+  CostCode: bindList(platform.costCodes.api.list),
+  VatKind: bindList(platform.vatKinds.api.list),
+  OrderKind: bindList(platform.orderKinds.api.list),
+  Language: bindList(platform.languages.api.list),
+  LabelSource: bindList(platform.labelSources.api.list),
+  "AddressSettings::SpecialCustomer": bindList(platform.specialCustomers.api.list),
+  "AddressSettings::PayTerm": bindList(addressSettings.addressPayTerms.api.list),
+  "AddressSettings::PaymentMethod": bindList(addressSettings.addressPaymentMethods.api.list),
+  BankAccount: bindList(platform.bankAccounts.api.list),
+  "AddressSettings::ShipFrom": bindList(addressSettings.addressShipFroms.api.list),
+  Warehouse: bindList(platform.warehouses.api.list),
+  "AddressSettings::ShipMethod": bindList(addressSettings.addressShipMethods.api.list),
+  ShippingCharge: bindList(platform.shippingCharges.api.list),
+  Currency: bindList(platform.currencies.api.list),
+};
+
+function rowToOption(row: CatalogRow): ReferenceOption {
+  const name = String(row.name ?? row.code ?? row.id);
+  const code = row.code != null && String(row.code) !== "" ? String(row.code) : undefined;
+  return { id: row.id, name, code };
+}
+
+function filterBySearch(options: ReferenceOption[], search: string): ReferenceOption[] {
+  const q = search.trim().toLowerCase();
+  if (!q) return options;
+  return options.filter((o) => referenceLabel(o).toLowerCase().includes(q));
+}
+
+export function isReferenceKlass(klass: string): klass is ReferenceKlassName {
+  return klass in REFERENCE_SOURCES;
+}
+
+export async function fetchReferenceOptions(
+  klass: string,
+  search?: string,
+): Promise<ReferenceOption[]> {
+  const list = REFERENCE_SOURCES[klass as ReferenceKlassName];
+  if (!list) return [];
+
+  const { items } = await list();
+  const options = items.map(rowToOption).sort((a, b) => referenceLabel(a).localeCompare(referenceLabel(b)));
+  return filterBySearch(options, search ?? "");
+}

@@ -8,8 +8,13 @@ import {
 } from "@/api/_client";
 import type { ApiEnvelope, ID, ListParams, Paginated } from "@/api/_client";
 import type { ApiError } from "@/api/_client/errors";
-import { denormalizeJsonApiEntity, paginatedFromJsonApi } from "@/api/_client/json-api";
-import type { JsonApiListMeta } from "@/api/_client/json-api";
+import {
+  denormalizeJsonApiCollection,
+  denormalizeJsonApiEnvelope,
+  denormalizeJsonApiEntity,
+  paginatedFromJsonApi,
+} from "@/api/_client/json-api";
+import type { IncludedMap, JsonApiListMeta } from "@/api/_client/json-api";
 import type {
   AddressCreatePayload,
   AddressRow,
@@ -24,8 +29,8 @@ const ADDRESS_DETAIL_INCLUDE =
 
 const SPECIAL_PRICE_INCLUDE = "address,stock,currency";
 
-function mapRow(raw: unknown): AddressRow {
-  return denormalizeJsonApiEntity(raw) as AddressRow;
+function mapRow(raw: unknown, includedMap?: IncludedMap): AddressRow {
+  return denormalizeJsonApiEntity(raw, includedMap) as AddressRow;
 }
 
 // --- Main addresses ---
@@ -38,14 +43,14 @@ async function createAddress(type: AddressTypeParam, payload: AddressCreatePaylo
     { address: payload },
     { params: { type } },
   );
-  return mapRow(res.data.data);
+  return denormalizeJsonApiEnvelope(res.data) as AddressRow;
 }
 
 async function fetchAddress(id: ID) {
   const res = await http.get<ApiEnvelope<unknown>>(`/addresses/${id}`, {
     params: flattenParams({ include: ADDRESS_DETAIL_INCLUDE }),
   });
-  return mapRow(res.data.data);
+  return denormalizeJsonApiEnvelope(res.data) as AddressRow;
 }
 
 async function listAddresses(
@@ -57,10 +62,10 @@ async function listAddresses(
     params: { type, ...flattenParams(merged) },
   });
   return paginatedFromJsonApi(
-    res.data as { data?: unknown; meta?: JsonApiListMeta },
+    res.data as { data?: unknown; included?: unknown[]; meta?: JsonApiListMeta },
     merged,
-    (raw) => {
-      const row = mapRow(raw);
+    (raw, includedMap) => {
+      const row = mapRow(raw, includedMap);
       row.type = type;
       return row;
     },
@@ -73,10 +78,10 @@ async function listSuppliers(params?: ListParams): Promise<Paginated<AddressRow>
     params: flattenParams(merged),
   });
   return paginatedFromJsonApi(
-    res.data as { data?: unknown; meta?: JsonApiListMeta },
+    res.data as { data?: unknown; included?: unknown[]; meta?: JsonApiListMeta },
     merged,
-    (raw) => {
-      const row = mapRow(raw);
+    (raw, includedMap) => {
+      const row = mapRow(raw, includedMap);
       row.type = "supplier";
       return row;
     },
@@ -85,7 +90,7 @@ async function listSuppliers(params?: ListParams): Promise<Paginated<AddressRow>
 
 async function updateAddress(id: ID, payload: AddressCreatePayload) {
   const res = await http.patch<ApiEnvelope<unknown>>(`/addresses/${id}`, { address: payload });
-  return mapRow(res.data.data);
+  return denormalizeJsonApiEnvelope(res.data) as AddressRow;
 }
 
 export const addresses = {
@@ -203,7 +208,7 @@ async function fetchContact(id: ID) {
   const res = await http.get<ApiEnvelope<unknown>>(`/address/contacts/${id}`, {
     params: flattenParams(contactDetailParams),
   });
-  return mapRow(res.data.data);
+  return denormalizeJsonApiEnvelope(res.data) as AddressRow;
 }
 
 async function updateContact(id: ID, payload: Record<string, unknown>) {
@@ -212,7 +217,7 @@ async function updateContact(id: ID, payload: Record<string, unknown>) {
     { contact: payload },
     { params: flattenParams(contactDetailParams) },
   );
-  return mapRow(res.data.data);
+  return denormalizeJsonApiEnvelope(res.data) as AddressRow;
 }
 
 async function deleteContact(id: ID) {
@@ -280,8 +285,7 @@ async function fetchSpecialPriceCollection(
   const res = await http.get<ApiEnvelope<unknown[]>>(path, {
     params: { include: SPECIAL_PRICE_INCLUDE, ...params },
   });
-  const data = res.data.data;
-  return Array.isArray(data) ? data.map(mapRow) : [];
+  return denormalizeJsonApiCollection(res.data) as AddressRow[];
 }
 
 async function fetchSellingPrice(params: FetchSellingPriceParams) {
@@ -297,8 +301,9 @@ async function fetchParticularSpecialPrice(params: FetchParticularSpecialPricePa
     "/address/special_prices/fetch_particular_special_price",
     { params },
   );
-  const data = res.data.data;
-  return data ? mapRow(data) : null;
+  return res.data.data
+    ? (denormalizeJsonApiEnvelope(res.data) as AddressRow)
+    : null;
 }
 
 export const addressSpecialPrices = {

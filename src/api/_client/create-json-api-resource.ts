@@ -1,8 +1,14 @@
 import { createResource } from "./resource";
 import type { ListParams } from "./types";
 import type { Resource } from "./resource.types";
-import { denormalizeJsonApiEntity, paginatedFromJsonApi } from "./json-api";
-import type { JsonApiListMeta } from "./json-api";
+import {
+  denormalizeJsonApiEntity,
+  logJsonApiComponentOutput,
+  paginatedFromJsonApi,
+  type IncludedMap,
+  type JsonApiEnvelope,
+  type JsonApiListMeta,
+} from "./json-api";
 
 export type JsonApiRow = {
   id: string;
@@ -20,7 +26,14 @@ export function createJsonApiResource<
   bodyKey: string,
   options?: { defaultListParams?: ListParams; defaultDetailParams?: ListParams },
 ): Resource<TRow, TWrite, TWrite> {
-  const mapRow = (raw: unknown) => denormalizeJsonApiEntity(raw) as TRow;
+  const mapRow = (raw: unknown, includedMap: IncludedMap) =>
+    denormalizeJsonApiEntity(raw, includedMap) as TRow;
+
+  const mapEntity = (raw: unknown, includedMap: IncludedMap) => {
+    const entity = mapRow(raw, includedMap);
+    logJsonApiComponentOutput("detail", entity);
+    return entity;
+  };
 
   return createResource<TRow, TWrite, TWrite>({
     scope,
@@ -29,10 +42,10 @@ export function createJsonApiResource<
     defaultListParams: options?.defaultListParams,
     defaultDetailParams: options?.defaultDetailParams,
     transform: {
-      entity: mapRow,
+      entity: mapEntity,
       list: (envelope, params) =>
         paginatedFromJsonApi(
-          envelope as { data?: unknown; meta?: JsonApiListMeta },
+          envelope as JsonApiEnvelope & { meta?: JsonApiListMeta },
           params,
           mapRow,
         ),

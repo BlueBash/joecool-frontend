@@ -1,16 +1,22 @@
 import { getRouteApi, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useMemo } from "react";
+import { FormProvider } from "react-hook-form";
 import { Loader2, Save } from "lucide-react";
 import { addresses } from "@/api/address";
 import type { ApiError } from "@/api/_client";
 import { EditScreen, EditCard, StickyFormFooter } from "@/components/edit-screen";
+import { ReferenceField } from "@/components/reference-field";
 import { Field, FormGrid } from "@/components/form-primitives";
+import { ReferenceKlass } from "@/lib/reference-registry";
+import type { ReferenceOption } from "@/lib/reference";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Pill } from "@/components/pill";
 import { toast } from "sonner";
 import type { Address, AddressType, AddressFlags } from "@/lib/types";
+import { applyApiFieldErrors, firstFormErrorMessage, useEntityForm } from "@/lib/form";
+import { AddressFormSchema, type AddressFormValues } from "./address-form-schema";
 import { useAddressDetail } from "./hooks";
 import { addressToPayload, mapRowToAddress } from "./map-address";
 
@@ -47,26 +53,42 @@ export function AddressEditPage() {
   const { id } = routeApi.useParams();
   const nav = useNavigate();
   const isNew = id === "new";
-  const [draft, setDraft] = useState<Address>(() => blankAddress());
 
   const detailQuery = useAddressDetail(id, !isNew);
 
-  useEffect(() => {
-    if (isNew) {
-      setDraft(blankAddress());
-      return;
-    }
-    if (detailQuery.data) {
-      setDraft(mapRowToAddress(detailQuery.data));
-    }
+  const resetValues = useMemo(() => {
+    if (isNew) return blankAddress();
+    if (!detailQuery.data) return null;
+    return mapRowToAddress(detailQuery.data);
   }, [isNew, detailQuery.data]);
+
+  const form = useEntityForm<AddressFormValues>({
+    schema: AddressFormSchema,
+    defaultValues: blankAddress(),
+    resetValues,
+    resetKey: id,
+  });
+
+  const {
+    watch,
+    setValue,
+    handleSubmit,
+    setError,
+    isDirty,
+    isSubmitting,
+  } = form;
+
+  const draft = watch();
 
   const createSupplier = addresses.hooks.useCreateSupplier();
   const createCustomer = addresses.hooks.useCreateCustomer();
   const updateAddress = addresses.hooks.useUpdate();
 
   const isSaving =
-    createSupplier.isPending || createCustomer.isPending || updateAddress.isPending;
+    isSubmitting ||
+    createSupplier.isPending ||
+    createCustomer.isPending ||
+    updateAddress.isPending;
 
   if (!isNew && detailQuery.isPending) {
     return (
@@ -92,44 +114,69 @@ export function AddressEditPage() {
     );
   }
 
-  const set = <K extends keyof Address>(k: K, v: Address[K]) => setDraft(d => ({ ...d, [k]: v }));
-  const setFlag = (k: keyof AddressFlags, v: boolean) =>
-    setDraft(d => ({ ...d, flags: { ...d.flags, [k]: v } }));
+  const set = <K extends keyof Address>(k: K, v: Address[K]) =>
+    setValue(k as keyof AddressFormValues, v as never, { shouldDirty: true, shouldTouch: true });
 
-  const save = () => {
-    if (!draft.code || !draft.name) { toast.error("Code and Name are required"); return; }
-    const payload = addressToPayload(draft);
-    if (isNew) {
-      const createOpts = {
-        onSuccess: (row: { id: string | number }) => {
-          toast.success("Address created");
-          nav({ to: "/address/$id", params: { id: String(row.id) } });
+  const setFlag = (k: keyof AddressFlags, v: boolean) =>
+    setValue("flags", { ...draft.flags, [k]: v }, { shouldDirty: true, shouldTouch: true });
+
+  const bindRef =
+    (idKey: keyof Address, labelKey: keyof Address) =>
+    (refId: string | number | null, opt?: ReferenceOption) => {
+      const numId = refId == null || refId === "" ? undefined : Number(refId);
+      setValue(
+        idKey as keyof AddressFormValues,
+        (Number.isFinite(numId) ? numId : undefined) as never,
+        { shouldDirty: true },
+      );
+      if (opt) {
+        setValue(labelKey as keyof AddressFormValues, opt.name as never, { shouldDirty: true });
+      }
+    };
+
+  const save = handleSubmit(
+    (values) => {
+      const payload = addressToPayload(values);
+      if (isNew) {
+        const createOpts = {
+          onSuccess: (row: { id: string | number }) => {
+            toast.success("Address created");
+            nav({ to: "/address/$id", params: { id: String(row.id) } });
+          },
+          onError: (err: ApiError) => {
+            if (!applyApiFieldErrors(setError, err)) toast.error(err.message);
+          },
+        };
+        if (values.type === "Supplier") createSupplier.mutate(payload, createOpts);
+        else createCustomer.mutate(payload, createOpts);
+        return;
+      }
+      updateAddress.mutate(
+        { id: values.id, data: payload },
+        {
+          onSuccess: () => toast.success("Address saved"),
+          onError: (err: ApiError) => {
+            if (!applyApiFieldErrors(setError, err)) toast.error(err.message);
+          },
         },
-        onError: (err: ApiError) => toast.error(err.message),
-      };
-      if (draft.type === "Supplier") createSupplier.mutate(payload, createOpts);
-      else createCustomer.mutate(payload, createOpts);
-      return;
-    }
-    updateAddress.mutate(
-      { id: draft.id, data: payload },
-      {
-        onSuccess: () => toast.success("Address saved"),
-        onError: (err: ApiError) => toast.error(err.message),
-      },
-    );
-  };
+      );
+    },
+    (errors) => {
+      toast.error(firstFormErrorMessage(errors) ?? "Please fix the highlighted fields");
+    },
+  );
 
   const f = draft.flags ?? {};
 
   return (
+    <FormProvider {...form}>
     <EditScreen
       backTo="/addresses"
       backLabel="Back to Addresses"
       title={isNew ? "New Address" : (draft.name || draft.code)}
       badges={<Pill variant={draft.type === "Supplier" ? "info" : "primary"}>{draft.type}</Pill>}
       actions={
-        <Button size="sm" className="h-8 gap-1.5" onClick={save} disabled={isSaving}>
+        <Button size="sm" className="h-8 gap-1.5" onClick={save} disabled={isSaving || (!isNew && !isDirty)}>
           {isSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
           {isNew ? "Create" : "Save"}
         </Button>
@@ -174,7 +221,7 @@ export function AddressEditPage() {
                 <Field label="Category"><Input value={draft.category ?? ""} onChange={e => set("category", e.target.value)} className="h-8" /></Field>
                 <Field label="Code"><Input value={draft.categoryCode ?? ""} onChange={e => set("categoryCode", e.target.value)} className="h-8 font-mono" /></Field>
               </div>
-              <Field label="Country"><Input value={draft.country} onChange={e => set("country", e.target.value)} className="h-8" /></Field>
+              <ReferenceField label="Country" klass={ReferenceKlass.Country} value={draft.countryId ?? null} displayLabel={draft.country} placeholder="Search countries…" onChange={bindRef("countryId", "country")} />
               <div className="grid grid-cols-[1fr_120px] gap-2">
                 <Field label="Area"><Input value={draft.area ?? ""} onChange={e => set("area", e.target.value)} className="h-8" /></Field>
                 <Field label="Code"><Input value={draft.areaCode ?? ""} onChange={e => set("areaCode", e.target.value)} className="h-8 font-mono" /></Field>
@@ -205,42 +252,42 @@ export function AddressEditPage() {
             <div>
               <EditCard title="Invoicing">
                 <FormGrid cols={2}>
-                  <Field label="Invoice Env"><Input value={draft.invoiceEnv ?? ""} onChange={e => set("invoiceEnv", e.target.value)} className="h-8" /></Field>
-                  <Field label="Credit Env"><Input value={draft.creditEnv ?? ""} onChange={e => set("creditEnv", e.target.value)} className="h-8" /></Field>
-                  <Field label="Currency"><Input value={draft.currency ?? ""} onChange={e => set("currency", e.target.value)} className="h-8" /></Field>
-                  <Field label="Price"><Input value={draft.priceCategory ?? ""} onChange={e => set("priceCategory", e.target.value)} className="h-8" /></Field>
-                  <Field label="Cost Code"><Input value={draft.costCode ?? ""} onChange={e => set("costCode", e.target.value)} className="h-8" /></Field>
+                  <ReferenceField label="Invoice Env" klass={ReferenceKlass.InvoiceEnvironment} value={draft.invoiceEnvId ?? null} displayLabel={draft.invoiceEnv} placeholder="Search…" onChange={bindRef("invoiceEnvId", "invoiceEnv")} />
+                  <ReferenceField label="Credit Env" klass={ReferenceKlass.InvoiceEnvironment} value={draft.creditEnvId ?? null} displayLabel={draft.creditEnv} placeholder="Search…" onChange={bindRef("creditEnvId", "creditEnv")} />
+                  <ReferenceField label="Currency" klass={ReferenceKlass.Currency} value={draft.orderCurrencyId ?? null} displayLabel={draft.currency} placeholder="Search…" onChange={bindRef("orderCurrencyId", "currency")} />
+                  <ReferenceField label="Price" klass={ReferenceKlass.PriceCategory} value={draft.orderPriceId ?? null} displayLabel={draft.priceCategory} placeholder="Search…" onChange={bindRef("orderPriceId", "priceCategory")} />
+                  <ReferenceField label="Cost Code" klass={ReferenceKlass.CostCode} value={draft.orderCostCodeId ?? null} displayLabel={draft.costCode} placeholder="Search…" onChange={bindRef("orderCostCodeId", "costCode")} />
                   <Field label="FOB Factor"><Input value={draft.fobFactor ?? ""} onChange={e => set("fobFactor", e.target.value)} className="h-8" /></Field>
                   <Field label="Overall(Inv) Dsc%"><Input type="number" value={draft.overallInvDscPct ?? ""} onChange={e => set("overallInvDscPct", Number(e.target.value))} className="h-8 tabular-nums" /></Field>
                   <Field label="Whlsl (Item) Dsc%"><Input type="number" value={draft.whlslItemDscPct ?? ""} onChange={e => set("whlslItemDscPct", Number(e.target.value))} className="h-8 tabular-nums" /></Field>
                   <Field label="Vat Reg"><Input value={draft.vatReg ?? ""} onChange={e => set("vatReg", e.target.value)} className="h-8" /></Field>
-                  <Field label="Vat Kind"><Input value={draft.vatKind ?? ""} onChange={e => set("vatKind", e.target.value)} className="h-8" /></Field>
-                  <Field label="Order Kind"><Input value={draft.orderKind ?? ""} onChange={e => set("orderKind", e.target.value)} className="h-8" /></Field>
-                  <Field label="Vat Rate"><Input value={draft.vatRate ?? ""} onChange={e => set("vatRate", e.target.value)} className="h-8" /></Field>
-                  <Field label="Language"><Input value={draft.language ?? ""} onChange={e => set("language", e.target.value)} className="h-8" /></Field>
-                  <Field label="Barcode Label"><Input value={draft.barcodeLabel ?? ""} onChange={e => set("barcodeLabel", e.target.value)} className="h-8" /></Field>
-                  <Field label="Special Invoice" className="md:col-span-2"><Input value={draft.specialInvoice ?? ""} onChange={e => set("specialInvoice", e.target.value)} className="h-8" /></Field>
+                  <ReferenceField label="Vat Kind" klass={ReferenceKlass.VatKind} value={draft.vatKindId ?? null} displayLabel={draft.vatKind} placeholder="Search…" onChange={bindRef("vatKindId", "vatKind")} />
+                  <ReferenceField label="Order Kind" klass={ReferenceKlass.OrderKind} value={draft.orderKindId ?? null} displayLabel={draft.orderKind} placeholder="Search…" onChange={bindRef("orderKindId", "orderKind")} />
+                  <ReferenceField label="Vat Rate" klass={ReferenceKlass.VatRateCode} value={draft.vatRateCodeId ?? null} displayLabel={draft.vatRate} placeholder="Search…" onChange={bindRef("vatRateCodeId", "vatRate")} />
+                  <ReferenceField label="Language" klass={ReferenceKlass.Language} value={draft.languageId ?? null} displayLabel={draft.language} placeholder="Search…" onChange={bindRef("languageId", "language")} />
+                  <ReferenceField label="Barcode Label" klass={ReferenceKlass.LabelSource} value={draft.labelSourceId ?? null} displayLabel={draft.barcodeLabel} placeholder="Search…" onChange={bindRef("labelSourceId", "barcodeLabel")} />
+                  <ReferenceField label="Special Invoice" className="md:col-span-2" klass={ReferenceKlass.SpecialCustomer} value={draft.specialInvsId ?? null} displayLabel={draft.specialInvoice} placeholder="Search…" onChange={bindRef("specialInvsId", "specialInvoice")} />
                 </FormGrid>
               </EditCard>
             </div>
             <div>
               <EditCard title="Payment">
                 <FormGrid cols={2}>
-                  <Field label="Pay Terms"><Input value={draft.payTerms ?? ""} onChange={e => set("payTerms", e.target.value)} className="h-8" /></Field>
+                  <ReferenceField label="Pay Terms" klass={ReferenceKlass.PayTerm} value={draft.payTermId ?? null} displayLabel={draft.payTerms} placeholder="Search…" onChange={bindRef("payTermId", "payTerms")} />
                   <Field label="Standard Days"><Input type="number" value={draft.standardDays ?? ""} onChange={e => set("standardDays", Number(e.target.value))} className="h-8 tabular-nums" /></Field>
                   <Field label="Settle Days"><Input type="number" value={draft.settleDays ?? ""} onChange={e => set("settleDays", Number(e.target.value))} className="h-8 tabular-nums" /></Field>
                   <Field label="Settle Discount"><Input type="number" value={draft.settleDiscount ?? ""} onChange={e => set("settleDiscount", Number(e.target.value))} className="h-8 tabular-nums" /></Field>
-                  <Field label="Pay Method"><Input value={draft.payMethod ?? ""} onChange={e => set("payMethod", e.target.value)} className="h-8" /></Field>
-                  <Field label="Bank Acct"><Input value={draft.bankAcct ?? ""} onChange={e => set("bankAcct", e.target.value)} className="h-8 font-mono" /></Field>
+                  <ReferenceField label="Pay Method" klass={ReferenceKlass.PaymentMethod} value={draft.payMethodId ?? null} displayLabel={draft.payMethod} placeholder="Search…" onChange={bindRef("payMethodId", "payMethod")} />
+                  <ReferenceField label="Bank Acct" klass={ReferenceKlass.BankAccount} value={draft.bankAccountId ?? null} displayLabel={draft.bankAcct} placeholder="Search…" onChange={bindRef("bankAccountId", "bankAcct")} />
                 </FormGrid>
               </EditCard>
               <EditCard title="Shipping">
                 <FormGrid cols={2}>
-                  <Field label="Ship From"><Input value={draft.shipFrom ?? ""} onChange={e => set("shipFrom", e.target.value)} className="h-8" /></Field>
-                  <Field label="Warehouse"><Input value={draft.warehouse ?? ""} onChange={e => set("warehouse", e.target.value)} className="h-8" /></Field>
-                  <Field label="Ship Method"><Input value={draft.shipMethod ?? ""} onChange={e => set("shipMethod", e.target.value)} className="h-8" /></Field>
+                  <ReferenceField label="Ship From" klass={ReferenceKlass.ShipFrom} value={draft.shipFromId ?? null} displayLabel={draft.shipFrom} placeholder="Search…" onChange={bindRef("shipFromId", "shipFrom")} />
+                  <ReferenceField label="Warehouse" klass={ReferenceKlass.Warehouse} value={draft.warehouseId ?? null} displayLabel={draft.warehouse} placeholder="Search…" onChange={bindRef("warehouseId", "warehouse")} />
+                  <ReferenceField label="Ship Method" klass={ReferenceKlass.ShipMethod} value={draft.shipMethodId ?? null} displayLabel={draft.shipMethod} placeholder="Search…" onChange={bindRef("shipMethodId", "shipMethod")} />
                   <Field label="Transit Day"><Input type="number" value={draft.transitDay ?? ""} onChange={e => set("transitDay", Number(e.target.value))} className="h-8 tabular-nums" /></Field>
-                  <Field label="Ship Charging"><Input value={draft.shipCharging ?? ""} onChange={e => set("shipCharging", e.target.value)} className="h-8" /></Field>
+                  <ReferenceField label="Ship Charging" klass={ReferenceKlass.ShippingCharge} value={draft.shippingChargeId ?? null} displayLabel={draft.shipCharging} placeholder="Search…" onChange={bindRef("shippingChargeId", "shipCharging")} />
                   <Field label="Charge"><Input type="number" value={draft.charge ?? ""} onChange={e => set("charge", Number(e.target.value))} className="h-8 tabular-nums" /></Field>
                 </FormGrid>
               </EditCard>
@@ -253,9 +300,9 @@ export function AddressEditPage() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <EditCard title="Agent">
               <FormGrid cols={1}>
-                <Field label="Account Manager"><Input value={draft.accountManager ?? ""} onChange={e => set("accountManager", e.target.value)} className="h-8" /></Field>
-                <Field label="Agent"><Input value={draft.agent ?? ""} onChange={e => set("agent", e.target.value)} className="h-8" /></Field>
-                <Field label="Profit Centre"><Input value={draft.profitCentre ?? ""} onChange={e => set("profitCentre", e.target.value)} className="h-8" /></Field>
+                <ReferenceField label="Account Manager" klass={ReferenceKlass.AccountManager} value={draft.accountManagerId ?? null} displayLabel={draft.accountManager} placeholder="Search…" onChange={bindRef("accountManagerId", "accountManager")} />
+                <ReferenceField label="Agent" klass={ReferenceKlass.Agent} value={draft.agentId ?? null} displayLabel={draft.agent} placeholder="Search…" onChange={bindRef("agentId", "agent")} />
+                <ReferenceField label="Profit Centre" klass={ReferenceKlass.ProfitCentre} value={draft.profitCentreId ?? null} displayLabel={draft.profitCentre} placeholder="Search…" onChange={bindRef("profitCentreId", "profitCentre")} />
               </FormGrid>
             </EditCard>
             <EditCard title="Flags">
@@ -354,7 +401,7 @@ export function AddressEditPage() {
             <FormGrid cols={3}>
               <Field label="Items"><Input value={draft.items ?? ""} onChange={e => set("items", e.target.value)} className="h-8" /></Field>
               <Field label="Supp FOB Factor"><Input value={draft.suppFobFactor ?? ""} onChange={e => set("suppFobFactor", e.target.value)} className="h-8" /></Field>
-              <Field label="Currency"><Input value={draft.costCurrency ?? ""} onChange={e => set("costCurrency", e.target.value)} className="h-8" /></Field>
+              <ReferenceField label="Currency" klass={ReferenceKlass.Currency} value={draft.costFactorCurrencyId ?? null} displayLabel={draft.costCurrency} placeholder="Search…" onChange={bindRef("costFactorCurrencyId", "costCurrency")} />
             </FormGrid>
           </EditCard>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -384,11 +431,12 @@ export function AddressEditPage() {
 
       <StickyFormFooter>
         <Button variant="outline" size="sm" onClick={() => nav({ to: "/addresses" })} disabled={isSaving}>Cancel</Button>
-        <Button size="sm" className="gap-1.5" onClick={save} disabled={isSaving}>
+        <Button size="sm" className="gap-1.5" onClick={save} disabled={isSaving || (!isNew && !isDirty)}>
           {isSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
           Save Address
         </Button>
       </StickyFormFooter>
     </EditScreen>
+    </FormProvider>
   );
 }

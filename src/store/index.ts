@@ -6,11 +6,21 @@ import {
 import type {
   StockItem, Address, Order, Transaction, Operator, TimeEntry, SettingItem,
 } from "@/lib/types";
-import type { AuthUser } from "@/api/auth";
+
+export interface AuthUser {
+  id: string;
+  name: string;
+  code: string;
+  username: string;
+  email: string;
+  permissions: string[];
+}
 
 interface AuthState {
   user: AuthUser | null;
   isAuthenticated: boolean;
+  /** Flat permission names for guards (mirrors `user.permissions`). */
+  permissions: string[];
   setUser: (user: AuthUser | null) => void;
   clear: () => void;
 }
@@ -25,8 +35,14 @@ export const useAuth = create<AuthState>()(
     (set) => ({
       user: null,
       isAuthenticated: false,
-      setUser: (user) => set({ user, isAuthenticated: !!user }),
-      clear: () => set({ user: null, isAuthenticated: false }),
+      permissions: [],
+      setUser: (user) =>
+        set({
+          user,
+          isAuthenticated: !!user,
+          permissions: user?.permissions ?? [],
+        }),
+      clear: () => set({ user: null, isAuthenticated: false, permissions: [] }),
     }),
     { name: "joecool-auth" },
   ),

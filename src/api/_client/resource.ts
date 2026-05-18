@@ -10,6 +10,7 @@ import { http } from "./http";
 import { createResourceKeys } from "./query-keys";
 import type { ApiError } from "./errors";
 import type { ApiEnvelope, ID, Paginated, QueryMeta } from "./types";
+import { buildIncludedMap, getNextPageParamFromPaginated } from "./json-api";
 import { flattenParams, mergeListParams, shapePaginated } from "./resource.utils";
 import type {
   Resource,
@@ -44,14 +45,20 @@ export function createResource<
       const res = await http.get<ApiEnvelope<TEntity>>(pathFor(id), {
         params: flattenParams(merged),
       });
+      const includedMap = buildIncludedMap(
+        (res.data as { included?: unknown[] }).included,
+      );
       const raw = res.data.data;
-      return cfg.transform?.entity ? cfg.transform.entity(raw) : raw;
+      return cfg.transform?.entity ? cfg.transform.entity(raw, includedMap) : raw;
     },
     async create(payload) {
       const body = cfg.bodyKey ? { [cfg.bodyKey]: payload } : payload;
       const res = await http.post<ApiEnvelope<TEntity>>(cfg.path, body);
+      const includedMap = buildIncludedMap(
+        (res.data as { included?: unknown[] }).included,
+      );
       const raw = res.data.data;
-      return cfg.transform?.entity ? cfg.transform.entity(raw) : raw;
+      return cfg.transform?.entity ? cfg.transform.entity(raw, includedMap) : raw;
     },
     async update(id, payload) {
       const data = cfg.bodyKey ? { [cfg.bodyKey]: payload } : payload;
@@ -60,8 +67,11 @@ export function createResource<
         url: pathFor(id),
         data,
       });
+      const includedMap = buildIncludedMap(
+        (res.data as { included?: unknown[] }).included,
+      );
       const raw = res.data.data;
-      return cfg.transform?.entity ? cfg.transform.entity(raw) : raw;
+      return cfg.transform?.entity ? cfg.transform.entity(raw, includedMap) : raw;
     },
     async delete(id) {
       await http.delete(pathFor(id));
@@ -122,8 +132,7 @@ export function createResource<
         queryKey: keys.infinite(merged),
         queryFn: ({ pageParam }) => api.list({ ...params, page: pageParam ?? 1 }),
         initialPageParam: 1,
-        getNextPageParam: (last) =>
-          last.meta.page < last.meta.totalPages ? last.meta.page + 1 : undefined,
+        getNextPageParam: getNextPageParamFromPaginated,
       });
     },
 

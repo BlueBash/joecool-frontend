@@ -1,4 +1,5 @@
 import { useId, type ChangeEvent } from "react";
+import { ReferenceSelect } from "@/components/reference-select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { FieldDef } from "../types";
@@ -9,9 +10,10 @@ interface FieldControlProps {
   error?: string;
   disabled?: boolean;
   onChange: (value: string) => void;
+  onBlur?: () => void;
 }
 
-export function FieldControl({ field, value, error, disabled, onChange }: FieldControlProps) {
+export function FieldControl({ field, value, error, disabled, onChange, onBlur }: FieldControlProps) {
   const id = useId();
   const errorId = error ? `${id}-error` : undefined;
 
@@ -34,11 +36,21 @@ export function FieldControl({ field, value, error, disabled, onChange }: FieldC
         {field.required && <span className="text-destructive ml-0.5">*</span>}
       </Label>
 
-      {field.kind === "textarea" ? (
+      {field.kind === "reference" && field.referenceKlass ? (
+        <ReferenceSelect
+          klass={field.referenceKlass}
+          value={value || null}
+          placeholder={field.placeholder ?? "Search…"}
+          disabled={disabled}
+          inputClassName="h-8 text-[13px]"
+          onChange={(id) => onChange(id == null ? "" : String(id))}
+        />
+      ) : field.kind === "textarea" ? (
         <textarea
           id={id}
           value={value}
           onChange={handleChange}
+          onBlur={onBlur}
           placeholder={field.placeholder}
           disabled={disabled}
           maxLength={field.maxLength}
@@ -51,6 +63,7 @@ export function FieldControl({ field, value, error, disabled, onChange }: FieldC
           id={id}
           value={value}
           onChange={handleChange}
+          onBlur={onBlur}
           placeholder={field.placeholder}
           disabled={disabled}
           maxLength={field.maxLength}

@@ -1,5 +1,7 @@
 import { useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
+import { useForm, type Resolver } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { Plus, Download, Zap, Loader2 } from "lucide-react";
 import { stocks } from "@/api/stocks";
 import type { ApiError } from "@/api/_client";
@@ -13,8 +15,10 @@ import { PaginationBar } from "@/components/pagination-bar";
 import { RowActions, EditLink, DeleteButton } from "@/components/row-actions";
 import { toast } from "sonner";
 import type { StockItem } from "@/lib/types";
+import { firstFormErrorMessage } from "@/lib/form";
 import { useStockDirectory } from "./hooks";
 import { stockItemToPayload } from "./map-stock";
+import { QuickStockFormSchema, type QuickStockFormValues } from "./stock-form-schema";
 
 type AddStockHandler = (item: StockItem) => void;
 
@@ -261,72 +265,50 @@ function StockListing() {
 }
 
 function QuickAddStock({ onAdd, onCancel, isSaving }: QuickAddStockProps) {
-  const [draft, setDraft] = useState({ code: "", title: "", category: "", onHand: "" });
-  const submit = () => {
-    if (!draft.code || !draft.title) {
-      toast.error("Code and Title are required");
-      return;
-    }
-    const onHand = Number(draft.onHand) || 0;
-    onAdd({
-      id: "",
-      code: draft.code.toUpperCase(),
-      title: draft.title,
-      category: draft.category || "—",
-      onHand,
-      reorderLevel: 5,
-      color: "—",
-      introDate: new Date().toISOString().slice(0, 10),
-      costPrice: 0,
-      sellingPrice: 0,
-      status: onHand === 0 ? "out" : "active",
-      imageHue: Math.floor(Math.random() * 360),
-      flags: [],
-    });
-  };
+  const {
+    register,
+    handleSubmit,
+    formState: { isSubmitting },
+  } = useForm<QuickStockFormValues>({
+    resolver: zodResolver(QuickStockFormSchema) as Resolver<QuickStockFormValues>,
+    defaultValues: { code: "", title: "", category: "", onHand: undefined },
+    mode: "onTouched",
+  });
+  const busy = isSaving || isSubmitting;
+  const submit = handleSubmit(
+    (values) => {
+      const onHand = values.onHand ?? 0;
+      onAdd({
+        id: "",
+        code: values.code.toUpperCase(),
+        title: values.title,
+        category: values.category || "—",
+        onHand,
+        reorderLevel: 5,
+        color: "—",
+        introDate: new Date().toISOString().slice(0, 10),
+        costPrice: 0,
+        sellingPrice: 0,
+        status: onHand === 0 ? "out" : "active",
+        imageHue: Math.floor(Math.random() * 360),
+        flags: [],
+      });
+    },
+    (errors) => toast.error(firstFormErrorMessage(errors) ?? "Code and Title are required"),
+  );
   return (
-    <div className="flex items-center gap-2 px-3 py-1.5">
+    <form className="flex items-center gap-2 px-3 py-1.5" onSubmit={submit} noValidate>
       <Plus className="h-3.5 w-3.5 text-muted-foreground" />
-      <Input
-        autoFocus
-        placeholder="Code"
-        value={draft.code}
-        onChange={(e) => setDraft((d) => ({ ...d, code: e.target.value }))}
-        className="h-7 w-28 text-[13px] font-mono"
-        onKeyDown={(e) => e.key === "Enter" && submit()}
-        disabled={isSaving}
-      />
-      <Input
-        placeholder="Title"
-        value={draft.title}
-        onChange={(e) => setDraft((d) => ({ ...d, title: e.target.value }))}
-        className="h-7 flex-1 text-[13px]"
-        onKeyDown={(e) => e.key === "Enter" && submit()}
-        disabled={isSaving}
-      />
-      <Input
-        placeholder="Category"
-        value={draft.category}
-        onChange={(e) => setDraft((d) => ({ ...d, category: e.target.value }))}
-        className="h-7 w-32 text-[13px]"
-        onKeyDown={(e) => e.key === "Enter" && submit()}
-        disabled={isSaving}
-      />
-      <Input
-        placeholder="On Hand"
-        type="number"
-        value={draft.onHand}
-        onChange={(e) => setDraft((d) => ({ ...d, onHand: e.target.value }))}
-        className="h-7 w-24 text-[13px] text-right tabular-nums"
-        onKeyDown={(e) => e.key === "Enter" && submit()}
-        disabled={isSaving}
-      />
-      <Button size="sm" className="h-7" onClick={submit} disabled={isSaving}>
-        {isSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Add"}
+      <Input autoFocus placeholder="Code" className="h-7 w-28 text-[13px] font-mono" disabled={busy} {...register("code")} />
+      <Input placeholder="Title" className="h-7 flex-1 text-[13px]" disabled={busy} {...register("title")} />
+      <Input placeholder="Category" className="h-7 w-32 text-[13px]" disabled={busy} {...register("category")} />
+      <Input placeholder="On Hand" type="number" className="h-7 w-24 text-[13px] text-right tabular-nums" disabled={busy} {...register("onHand", { valueAsNumber: true })} />
+      <Button type="submit" size="sm" className="h-7" disabled={busy}>
+        {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Add"}
       </Button>
-      <Button size="sm" variant="ghost" className="h-7" onClick={onCancel} disabled={isSaving}>
+      <Button type="button" size="sm" variant="ghost" className="h-7" onClick={onCancel} disabled={busy}>
         Cancel
       </Button>
-    </div>
+    </form>
   );
 }

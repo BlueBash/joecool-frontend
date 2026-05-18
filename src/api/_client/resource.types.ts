@@ -9,6 +9,7 @@ import type {
   UseQueryResult,
 } from "@tanstack/react-query";
 import type { ApiError } from "./errors";
+import type { IncludedMap } from "./json-api";
 import type { ID, ListParams, Paginated } from "./types";
 import type { ResourceKeys } from "./query-keys";
 
@@ -34,7 +35,7 @@ export interface ResourceConfig<TEntity, TCreate, TUpdate> {
   defaultDetailParams?: ListParams;
   /** Optional runtime shaping of API responses. */
   transform?: {
-    entity?: (raw: unknown) => TEntity;
+    entity?: (raw: unknown, includedMap: IncludedMap) => TEntity;
     list?: (raw: unknown, listParams?: ListParams) => Paginated<TEntity>;
   };
 }

@@ -1,5 +1,6 @@
 import { getRouteApi, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
+import { FormProvider } from "react-hook-form";
 import { Trash2, Save, Plus, Printer, Mail } from "lucide-react";
 import { useOrders, useStocks } from "@/store";
 import { EditScreen, EditCard, StickyFormFooter } from "@/components/edit-screen";
@@ -12,6 +13,8 @@ import { CopyableCode } from "@/components/app-shell";
 import { InlineNumber } from "@/components/inline-edit";
 import { toast } from "sonner";
 import type { Order, OrderStatus, OrderKind, OrderLineUpdate } from "@/lib/types";
+import { firstFormErrorMessage, useEntityForm } from "@/lib/form";
+import { OrderFormSchema, type OrderFormValues } from "./order-form-schema";
 
 const routeApi = getRouteApi("/order/$id");
 
@@ -32,10 +35,19 @@ export function OrderEditPage() {
   const { items, update, remove } = useOrders();
   const stocks = useStocks(s => s.items);
   const item = items.find(i => i.id === id);
-  const [draft, setDraft] = useState<Order | undefined>(item);
   const [lineCode, setLineCode] = useState("");
 
-  if (!item || !draft) {
+  const form = useEntityForm<OrderFormValues>({
+    schema: OrderFormSchema,
+    defaultValues: item ?? ({} as Order),
+    resetValues: item ?? null,
+    resetKey: id,
+  });
+
+  const { watch, setValue, handleSubmit, isDirty, isSubmitting } = form;
+  const draft = watch();
+
+  if (!item || !draft?.id) {
     return (
       <EditScreen backTo="/orders" title="Order not found">
         <p className="text-muted-foreground text-[13px]">This order may have been deleted.</p>
@@ -43,7 +55,8 @@ export function OrderEditPage() {
     );
   }
 
-  const set = <K extends keyof Order>(k: K, v: Order[K]) => setDraft(d => ({ ...(d as Order), [k]: v }));
+  const set = <K extends keyof Order>(k: K, v: Order[K]) =>
+    setValue(k as keyof OrderFormValues, v as never, { shouldDirty: true, shouldTouch: true });
   const totalQty = draft.lines.reduce((s, l) => s + l.qty, 0);
   const totalVal = draft.lines.reduce((s, l) => s + l.qty * l.price, 0);
 
@@ -58,10 +71,20 @@ export function OrderEditPage() {
     setLineCode("");
   };
 
-  const save = () => { update(item.id, draft); toast.success("Order saved"); nav({ to: "/orders" }); };
+  const save = handleSubmit(
+    (values) => {
+      update(item.id, values);
+      toast.success("Order saved");
+      nav({ to: "/orders" });
+    },
+    (errors) => {
+      toast.error(firstFormErrorMessage(errors) ?? "Please fix the highlighted fields");
+    },
+  );
   const onDelete = () => { remove(item.id); toast.success("Removed"); nav({ to: "/orders" }); };
 
   return (
+    <FormProvider {...form}>
     <EditScreen
       backTo="/orders"
       backLabel="Back to Orders"
@@ -80,7 +103,7 @@ export function OrderEditPage() {
           <Button variant="outline" size="sm" className="h-8 gap-1.5 text-destructive hover:text-destructive" onClick={onDelete}>
             <Trash2 className="h-3.5 w-3.5" /> Delete
           </Button>
-          <Button size="sm" className="h-8 gap-1.5" onClick={save}><Save className="h-3.5 w-3.5" /> Save</Button>
+          <Button size="sm" className="h-8 gap-1.5" onClick={save} disabled={isSubmitting || !isDirty}><Save className="h-3.5 w-3.5" /> Save</Button>
         </>
       }
     >
@@ -395,8 +418,9 @@ export function OrderEditPage() {
 
       <StickyFormFooter>
         <Button variant="outline" size="sm" onClick={() => nav({ to: "/orders" })}>Cancel</Button>
-        <Button size="sm" className="gap-1.5" onClick={save}><Save className="h-3.5 w-3.5" /> Update</Button>
+        <Button size="sm" className="gap-1.5" onClick={save} disabled={isSubmitting || !isDirty}><Save className="h-3.5 w-3.5" /> Update</Button>
       </StickyFormFooter>
     </EditScreen>
+    </FormProvider>
   );
 }

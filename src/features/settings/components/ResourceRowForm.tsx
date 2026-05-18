@@ -1,10 +1,18 @@
-import { useEffect, useId, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useId, useMemo } from "react";
+import { Controller, useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { Check, Loader2, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { ApiError } from "@/api/_client";
-import type { FormErrors, FormMode, FormValues, SettingsResourceEntry } from "../types";
-import { hasErrors, toFormPayload, toFormValues, validateFormValues } from "../utils";
+import {
+  applyApiFieldErrors,
+  buildSettingsFormSchema,
+  firstFormErrorMessage,
+  type SettingsFormValues,
+} from "@/lib/form";
+import type { FormMode, SettingsResourceEntry } from "../types";
+import { toFormPayload, toFormValues } from "../utils";
 import { FieldControl } from "./FieldControl";
 
 interface ResourceRowFormProps {
@@ -16,82 +24,87 @@ interface ResourceRowFormProps {
 export function ResourceRowForm({ entry, mode, onDone }: ResourceRowFormProps) {
   const { resource, fields, singular } = entry;
   const isEdit = mode.kind === "edit";
+  const formId = useId();
 
   const detail = resource.hooks.useDetail(isEdit ? mode.id : null);
   const create = resource.hooks.useCreate();
   const update = resource.hooks.useUpdate();
+
+  const schema = useMemo(() => buildSettingsFormSchema(fields), [fields]);
 
   const initialValues = useMemo(
     () => toFormValues(fields, isEdit ? detail.data : undefined),
     [fields, isEdit, detail.data],
   );
 
-  const [values, setValues] = useState<FormValues>(initialValues);
-  const [errors, setErrors] = useState<FormErrors>({});
-  const [touched, setTouched] = useState(false);
-  const formId = useId();
+  const {
+    control,
+    handleSubmit,
+    setError,
+    reset,
+    formState: { isSubmitting },
+  } = useForm<SettingsFormValues>({
+    resolver: zodResolver(schema),
+    defaultValues: initialValues,
+    mode: "onTouched",
+  });
 
   useEffect(() => {
-    if (!touched) setValues(initialValues);
-  }, [initialValues, touched]);
+    reset(initialValues);
+  }, [initialValues, reset]);
 
-  const busy = create.isPending || update.isPending || (isEdit && detail.isLoading);
+  const busy = create.isPending || update.isPending || (isEdit && detail.isLoading) || isSubmitting;
 
-  const setField = (name: string, value: string) => {
-    setTouched(true);
-    setValues((prev) => ({ ...prev, [name]: value }));
-    if (errors[name]) {
-      setErrors((prev) => ({ ...prev, [name]: undefined }));
-    }
-  };
+  const onSubmit = handleSubmit(
+    (values) => {
+      const payload = toFormPayload(fields, values);
+      const wire = entry.mapWritePayload ? entry.mapWritePayload(payload) : payload;
 
-  const handleSubmit = (e: FormEvent) => {
-    e.preventDefault();
-    const next = validateFormValues(fields, values);
-    setErrors(next);
-    if (hasErrors(next)) return;
+      const onSuccess = () => {
+        toast.success(isEdit ? `${singular} updated` : `${singular} created`);
+        onDone();
+      };
 
-    const payload = toFormPayload(fields, values);
-    const wire = entry.mapWritePayload ? entry.mapWritePayload(payload) : payload;
+      const onError = (err: ApiError) => {
+        if (applyApiFieldErrors(setError, err)) return;
+        if (!err.fieldErrors) return;
+      };
 
-    const onSuccess = () => {
-      toast.success(isEdit ? `${singular} updated` : `${singular} created`);
-      onDone();
-    };
-
-    const onError = (err: ApiError) => {
-      if (!err.fieldErrors) return; // global handler already toasted
-      const fieldErrors: FormErrors = {};
-      for (const [k, msgs] of Object.entries(err.fieldErrors)) {
-        if (msgs?.[0]) fieldErrors[k] = msgs[0];
+      if (isEdit) {
+        update.mutate({ id: mode.id, data: wire }, { onSuccess, onError });
+      } else {
+        create.mutate(wire, { onSuccess, onError });
       }
-      setErrors(fieldErrors);
-    };
-
-    if (isEdit) {
-      update.mutate({ id: mode.id, data: wire }, { onSuccess, onError });
-    } else {
-      create.mutate(wire, { onSuccess, onError });
-    }
-  };
+    },
+    (errors) => {
+      toast.error(firstFormErrorMessage(errors) ?? "Please fix the highlighted fields");
+    },
+  );
 
   return (
     <form
       id={formId}
-      onSubmit={handleSubmit}
+      onSubmit={onSubmit}
       className="px-4 py-3"
       noValidate
       aria-label={isEdit ? `Edit ${singular}` : `Add ${singular}`}
     >
       <div className="grid grid-cols-1 gap-3 md:grid-cols-[1fr_2fr_auto] md:items-start">
         {fields.map((f) => (
-          <FieldControl
+          <Controller
             key={f.name}
-            field={f}
-            value={values[f.name] ?? ""}
-            error={errors[f.name]}
-            disabled={busy}
-            onChange={(v) => setField(f.name, v)}
+            control={control}
+            name={f.name}
+            render={({ field, fieldState }) => (
+              <FieldControl
+                field={f}
+                value={field.value ?? ""}
+                error={fieldState.error?.message}
+                disabled={busy}
+                onChange={field.onChange}
+                onBlur={field.onBlur}
+              />
+            )}
           />
         ))}
 

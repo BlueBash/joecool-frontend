@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
-import { authStorage, useLoginMutation } from "@/api";
+import { authStorage, useLoginMutation, fetchUserSession } from "@/api";
 import { LoginFormSchema, type LoginFormValues } from "@/api/auth";
 import { useAuth } from "@/store";
 import { paths, HOME_REDIRECT } from "@/lib/config/paths";
@@ -36,15 +36,21 @@ export function LoginPage() {
   });
 
   const login = useLoginMutation({
-    onSuccess: (response) => {
+    onSuccess: async (response) => {
       authStorage.setAccessToken(response.token);
-      setUser({
-        id: response.user.id,
-        name: response.user.name ?? "",
-        code: response.user.code ?? "",
-        username: response.user.username ?? "",
-        email: response.user.email ?? "",
-      });
+      try {
+        const session = await fetchUserSession(response.user.id);
+        setUser(session.user);
+      } catch {
+        setUser({
+          id: response.user.id,
+          name: response.user.name ?? "",
+          code: response.user.code ?? "",
+          username: response.user.username ?? response.user.email ?? "",
+          email: response.user.email ?? "",
+          permissions: [],
+        });
+      }
       const target =
         search.redirect && search.redirect.startsWith("/") ? search.redirect : HOME_REDIRECT;
       const displayName = response.user.name ?? response.user.username ?? response.user.email ?? "";

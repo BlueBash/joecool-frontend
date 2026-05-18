@@ -7,7 +7,7 @@ import {
 } from "@/api/_client";
 import type { ApiEnvelope, ID, ListParams } from "@/api/_client";
 import type { ApiError } from "@/api/_client/errors";
-import { denormalizeJsonApiEntity } from "@/api/_client/json-api";
+import { denormalizeJsonApiEnvelope } from "@/api/_client/json-api";
 import type {
   GenerateNextCodeParams,
   GenerateNextCodeResult,
@@ -22,10 +22,6 @@ export const STOCK_LIST_INCLUDE =
 export const STOCK_DETAIL_INCLUDE =
   "display,collection,selection,gender,assortment,joe_online_range,unit,vat_rate_code,tariff_code,stock_buyer,category,blurbs,notes,cost_price,dimension_info,fitting_info,show_kit_items,country_of_origin,manu_country_of_origin,colour";
 
-function mapRow(raw: unknown): StockRow {
-  return denormalizeJsonApiEntity(raw) as StockRow;
-}
-
 const stocksBase = createJsonApiResource<StockRow, StockWritePayload>(
   ["stocks"],
   "/stocks",
@@ -38,7 +34,7 @@ const stocksBase = createJsonApiResource<StockRow, StockWritePayload>(
 
 async function cloneStock(stockId: ID) {
   const res = await http.post<ApiEnvelope<unknown>>(`/stocks/${stockId}/clone`);
-  return mapRow(res.data.data);
+  return denormalizeJsonApiEnvelope(res.data) as StockRow;
 }
 
 async function generateNextCode(params?: GenerateNextCodeParams) {

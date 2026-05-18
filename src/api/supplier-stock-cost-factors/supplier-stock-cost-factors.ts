@@ -2,15 +2,11 @@ import { queryOptions, useMutation, useQuery, useQueryClient } from "@tanstack/r
 import { createResourceKeys, http } from "@/api/_client";
 import type { ApiEnvelope, ID } from "@/api/_client";
 import type { ApiError } from "@/api/_client/errors";
-import { denormalizeJsonApiEntity } from "@/api/_client/json-api";
+import { denormalizeJsonApiEnvelope } from "@/api/_client/json-api";
 import type {
   SuppStockCostFactorRow,
   SuppStockCostFactorWritePayload,
 } from "./types";
-
-function mapRow(raw: unknown): SuppStockCostFactorRow {
-  return denormalizeJsonApiEntity(raw) as SuppStockCostFactorRow;
-}
 
 const factorKeys = createResourceKeys(["supplier-stock-cost-factors"]);
 
@@ -19,7 +15,7 @@ async function updateFactor(id: ID, payload: SuppStockCostFactorWritePayload) {
     `/supp_stock_cost_factors/${id}`,
     { supp_stock_cost_factor: payload },
   );
-  return mapRow(res.data.data);
+  return denormalizeJsonApiEnvelope(res.data) as SuppStockCostFactorRow;
 }
 
 async function fetchSupplierDefaults(supplierId: ID) {

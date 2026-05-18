@@ -1,5 +1,7 @@
 import { useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { Plus, Download, Zap, Loader2 } from "lucide-react";
 import { addresses } from "@/api/address";
 import type { ApiError } from "@/api/_client";
@@ -12,8 +14,10 @@ import { PaginationBar } from "@/components/pagination-bar";
 import { RowActions, EditLink } from "@/components/row-actions";
 import { toast } from "sonner";
 import type { Address, AddressType } from "@/lib/types";
+import { firstFormErrorMessage } from "@/lib/form";
 import { addressRowKey, useAddressDirectory } from "./hooks";
 import { addressToPayload } from "./map-address";
+import { QuickAddressFormSchema, type QuickAddressFormValues } from "./address-form-schema";
 
 type AddAddressHandler = (address: Address) => void;
 
@@ -193,79 +197,47 @@ function AddressesListing() {
 }
 
 function QuickAddAddress({ onAdd, onCancel, isSaving }: QuickAddAddressProps) {
-  const [draft, setDraft] = useState({
-    code: "",
-    name: "",
-    type: "Customer" as AddressType,
-    town: "",
-    country: "",
+  const {
+    register,
+    handleSubmit,
+    formState: { isSubmitting },
+  } = useForm<QuickAddressFormValues>({
+    resolver: zodResolver(QuickAddressFormSchema),
+    defaultValues: { code: "", name: "", type: "Customer", town: "", country: "" },
+    mode: "onTouched",
   });
-  const submit = () => {
-    if (!draft.code || !draft.name) {
-      toast.error("Code and Name are required");
-      return;
-    }
-    onAdd({
-      id: "",
-      code: draft.code,
-      name: draft.name,
-      type: draft.type,
-      address1: draft.town || "—",
-      town: draft.town,
-      country: draft.country || "—",
-    });
-  };
+  const busy = isSaving || isSubmitting;
+  const submit = handleSubmit(
+    (values) => {
+      onAdd({
+        id: "",
+        code: values.code,
+        name: values.name,
+        type: values.type,
+        address1: values.town || "—",
+        town: values.town ?? "",
+        country: values.country || "—",
+      });
+    },
+    (errors) => toast.error(firstFormErrorMessage(errors) ?? "Code and Name are required"),
+  );
   return (
-    <div className="flex items-center gap-2 px-3 py-1.5">
+    <form className="flex items-center gap-2 px-3 py-1.5" onSubmit={submit} noValidate>
       <Plus className="h-3.5 w-3.5 text-muted-foreground" />
-      <Input
-        autoFocus
-        placeholder="Code"
-        value={draft.code}
-        onChange={(e) => setDraft((d) => ({ ...d, code: e.target.value }))}
-        className="h-7 w-24 text-[13px] font-mono"
-        onKeyDown={(e) => e.key === "Enter" && submit()}
-        disabled={isSaving}
-      />
-      <Input
-        placeholder="Name"
-        value={draft.name}
-        onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))}
-        className="h-7 flex-1 text-[13px]"
-        onKeyDown={(e) => e.key === "Enter" && submit()}
-        disabled={isSaving}
-      />
-      <select
-        value={draft.type}
-        onChange={(e) => setDraft((d) => ({ ...d, type: e.target.value as AddressType }))}
-        className="h-7 px-2 rounded border border-border bg-background text-[13px]"
-        disabled={isSaving}
-      >
+      <Input autoFocus placeholder="Code" className="h-7 w-24 text-[13px] font-mono" disabled={busy} {...register("code")} />
+      <Input placeholder="Name" className="h-7 flex-1 text-[13px]" disabled={busy} {...register("name")} />
+      <select className="h-7 px-2 rounded border border-border bg-background text-[13px]" disabled={busy} {...register("type")}>
         <option value="Customer">Customer</option>
         <option value="Supplier">Supplier</option>
       </select>
-      <Input
-        placeholder="Town"
-        value={draft.town}
-        onChange={(e) => setDraft((d) => ({ ...d, town: e.target.value }))}
-        className="h-7 w-32 text-[13px]"
-        onKeyDown={(e) => e.key === "Enter" && submit()}
-        disabled={isSaving}
-      />
-      <Input
-        placeholder="Country"
-        value={draft.country}
-        onChange={(e) => setDraft((d) => ({ ...d, country: e.target.value }))}
-        className="h-7 w-28 text-[13px]"
-        onKeyDown={(e) => e.key === "Enter" && submit()}
-        disabled={isSaving}
-      />
-      <Button size="sm" className="h-7" onClick={submit} disabled={isSaving}>
-        {isSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Add"}
+      <Input placeholder="Town" className="h-7 w-32 text-[13px]" disabled={busy} {...register("town")} />
+      <Input placeholder="Country" className="h-7 w-28 text-[13px]" disabled={busy} {...register("country")} />
+      <Button type="submit" size="sm" className="h-7" disabled={busy}>
+        {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Add"}
       </Button>
-      <Button size="sm" variant="ghost" className="h-7" onClick={onCancel} disabled={isSaving}>
+      <Button type="button" size="sm" variant="ghost" className="h-7" onClick={onCancel} disabled={busy}>
         Cancel
       </Button>
-    </div>
+    </form>
   );
 }

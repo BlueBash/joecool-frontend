@@ -16,12 +16,14 @@ function mk(
     bodyKey,
     defaultListParams,
     transform: {
-      entity: (raw) => denormalizeJsonApiEntity(raw) as StockSettingRow,
+      entity: (raw, includedMap) =>
+        denormalizeJsonApiEntity(raw, includedMap) as StockSettingRow,
       list: (envelope, params) =>
         paginatedFromJsonApi(
           envelope as { data?: unknown; meta?: JsonApiListMeta },
           params,
-          (row) => denormalizeJsonApiEntity(row) as StockSettingRow,
+          (row, includedMap) =>
+            denormalizeJsonApiEntity(row, includedMap) as StockSettingRow,
         ),
     },
   });

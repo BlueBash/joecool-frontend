@@ -1,19 +1,29 @@
 import { getRouteApi, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { Loader2, Save, Trash2 } from "lucide-react";
+import { FormProvider } from "react-hook-form";
 import { useForgotPasswordMutation } from "@/api/auth";
 import type { ApiError } from "@/api/_client";
 import { permissions } from "@/api/permissions";
 import { roles } from "@/api/roles";
 import { EditScreen, EditCard, StickyFormFooter } from "@/components/edit-screen";
-import { Field, FormGrid } from "@/components/form-primitives";
+import {
+  FormCheckboxField,
+  FormRoot,
+  FormSelectField,
+  FormTextField,
+} from "@/components/form";
+import { FormGrid } from "@/components/form-primitives";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Pill } from "@/components/pill";
-import { Switch } from "@/components/ui/switch";
 import { CopyableCode } from "@/components/app-shell";
+import { applyApiFieldErrors, firstFormErrorMessage, useEntityForm } from "@/lib/form";
 import { toast } from "sonner";
-import type { Operator } from "@/lib/types";
+import {
+  createOperatorFormSchema,
+  type OperatorFormValues,
+} from "./operator-form-schema";
 import {
   useOperatorCreate,
   useOperatorDelete,
@@ -26,7 +36,7 @@ const routeApi = getRouteApi("/operator/$id");
 
 const UI_ROLES = ["Admin", "Manager", "Staff", "Viewer"] as const;
 
-function blankOperator(): Operator {
+function blankOperatorForm(): OperatorFormValues {
   return {
     id: "",
     code: "",
@@ -35,6 +45,8 @@ function blankOperator(): Operator {
     role: "Staff",
     active: true,
     lastSeen: "—",
+    password: "",
+    permissions: [],
   };
 }
 
@@ -42,34 +54,52 @@ export function OperatorEditPage() {
   const { id } = routeApi.useParams();
   const nav = useNavigate();
   const isNew = id === "new";
-  const [draft, setDraft] = useState<Operator>(() => blankOperator());
-  const [password, setPassword] = useState("");
   const [selectedPerms, setSelectedPerms] = useState<Set<string>>(new Set());
 
   const detailQuery = useOperatorDetail(id, !isNew);
   const rolesQuery = roles.hooks.useList({ pageSize: 200 });
   const permissionsQuery = permissions.hooks.useList({ pageSize: 500 });
 
+  const resetValues = useMemo(() => {
+    if (isNew) return blankOperatorForm();
+    if (!detailQuery.data) return null;
+    const mapped = mapRowToOperator(detailQuery.data);
+    const apiPerms = Array.isArray(detailQuery.data.permissions)
+      ? detailQuery.data.permissions.map(String)
+      : [];
+    return {
+      ...mapped,
+      password: "",
+      permissions: apiPerms,
+    } satisfies OperatorFormValues;
+  }, [isNew, detailQuery.data]);
+
+  const form = useEntityForm({
+    schema: createOperatorFormSchema(isNew),
+    defaultValues: blankOperatorForm(),
+    resetValues,
+    resetKey: id,
+  });
+
+  const {
+    handleSubmit,
+    setError,
+    watch,
+    setValue,
+    isDirty,
+    isSubmitting,
+  } = form;
+
+  const draft = watch();
+
+  useEffect(() => {
+    setSelectedPerms(new Set(draft.permissions ?? []));
+  }, [draft.permissions]);
+
   const createOperator = useOperatorCreate();
   const updateOperator = useOperatorUpdate();
   const deleteOperator = useOperatorDelete();
   const forgotPassword = useForgotPasswordMutation();
-
-  useEffect(() => {
-    if (isNew) {
-      setDraft(blankOperator());
-      setSelectedPerms(new Set());
-      return;
-    }
-    if (detailQuery.data) {
-      const mapped = mapRowToOperator(detailQuery.data);
-      setDraft(mapped);
-      const apiPerms = Array.isArray(detailQuery.data.permissions)
-        ? detailQuery.data.permissions.map(String)
-        : [];
-      setSelectedPerms(new Set(apiPerms));
-    }
-  }, [isNew, detailQuery.data]);
 
   const roleOptions = useMemo(() => {
     const fromApi = (rolesQuery.data?.items ?? []).map((r) => String(r.name ?? r.id));
@@ -81,7 +111,99 @@ export function OperatorEditPage() {
     [permissionsQuery.data?.items],
   );
 
-  const isSaving = createOperator.isPending || updateOperator.isPending;
+  const isSaving =
+    isSubmitting || createOperator.isPending || updateOperator.isPending;
+
+  const togglePerm = (p: string) => {
+    setSelectedPerms((prev) => {
+      const next = new Set(prev);
+      if (next.has(p)) next.delete(p);
+      else next.add(p);
+      setValue("permissions", [...next], { shouldDirty: true });
+      return next;
+    });
+  };
+
+  const onSubmit = handleSubmit(
+    (values) => {
+      const payload = operatorToPayload(
+        {
+          id: values.id,
+          code: values.code.toUpperCase(),
+          name: values.name,
+          email: values.email ?? "",
+          role: values.role,
+          active: values.active,
+          lastSeen: values.lastSeen,
+        },
+        {
+          password: isNew ? values.password : undefined,
+          roles: [values.role],
+          permissions: [...selectedPerms],
+        },
+      );
+
+      if (isNew) {
+        createOperator.mutate(payload, {
+          onSuccess: (row) => {
+            toast.success("Operator created");
+            nav({ to: "/operator/$id", params: { id: String(row.id) } });
+          },
+          onError: (err: ApiError) => {
+            if (!applyApiFieldErrors(setError, err)) toast.error(err.message);
+          },
+        });
+      } else {
+        updateOperator.mutate(
+          { id, data: payload },
+          {
+            onSuccess: () => {
+              toast.success("Operator saved");
+              nav({ to: "/operators" });
+            },
+            onError: (err: ApiError) => {
+              if (!applyApiFieldErrors(setError, err)) toast.error(err.message);
+            },
+          },
+        );
+      }
+    },
+    (errors) => {
+      toast.error(firstFormErrorMessage(errors) ?? "Please fix the highlighted fields");
+    },
+  );
+
+  const onDelete = () => {
+    if (isNew) {
+      nav({ to: "/operators" });
+      return;
+    }
+    deleteOperator.mutate(
+      { id },
+      {
+        onSuccess: () => {
+          toast.success("Removed");
+          nav({ to: "/operators" });
+        },
+        onError: (err: ApiError) => toast.error(err.message),
+      },
+    );
+  };
+
+  const sendReset = () => {
+    const target = draft.email || draft.code;
+    if (!target) {
+      toast.error("Enter an email or code first");
+      return;
+    }
+    forgotPassword.mutate(
+      { code_or_email: target },
+      {
+        onSuccess: (res) => toast.success(res.message ?? "Reset link sent"),
+        onError: (err: ApiError) => toast.error(err.message),
+      },
+    );
+  };
 
   if (!isNew && detailQuery.isPending) {
     return (
@@ -104,230 +226,146 @@ export function OperatorEditPage() {
     );
   }
 
-  const set = <K extends keyof Operator>(k: K, v: Operator[K]) =>
-    setDraft((d) => ({ ...d, [k]: v }));
-
-  const togglePerm = (p: string) => {
-    setSelectedPerms((prev) => {
-      const next = new Set(prev);
-      if (next.has(p)) next.delete(p);
-      else next.add(p);
-      return next;
-    });
-  };
-
-  const save = () => {
-    if (!draft.code || !draft.name) {
-      toast.error("Code and Name are required");
-      return;
-    }
-    if (isNew && password.length < 6) {
-      toast.error("Password must be at least 6 characters");
-      return;
-    }
-
-    const payload = operatorToPayload(
-      { ...draft, code: draft.code.toUpperCase() },
-      {
-        password: isNew ? password : undefined,
-        roles: [draft.role],
-        permissions: [...selectedPerms],
-      },
-    );
-
-    if (isNew) {
-      createOperator.mutate(payload, {
-        onSuccess: (row) => {
-          toast.success("Operator created");
-          nav({ to: "/operator/$id", params: { id: String(row.id) } });
-        },
-        onError: (err: ApiError) => toast.error(err.message),
-      });
-    } else {
-      updateOperator.mutate(
-        { id, data: payload },
-        {
-          onSuccess: () => {
-            toast.success("Operator saved");
-            nav({ to: "/operators" });
-          },
-          onError: (err: ApiError) => toast.error(err.message),
-        },
-      );
-    }
-  };
-
-  const onDelete = () => {
-    if (isNew) {
-      nav({ to: "/operators" });
-      return;
-    }
-    deleteOperator.mutate({ id }, {
-      onSuccess: () => {
-        toast.success("Removed");
-        nav({ to: "/operators" });
-      },
-      onError: (err: ApiError) => toast.error(err.message),
-    });
-  };
-
-  const sendReset = () => {
-    const target = draft.email || draft.code;
-    if (!target) {
-      toast.error("Enter an email or code first");
-      return;
-    }
-    forgotPassword.mutate(
-      { code_or_email: target },
-      {
-        onSuccess: (res) => toast.success(res.message ?? "Reset link sent"),
-        onError: (err: ApiError) => toast.error(err.message),
-      },
-    );
-  };
-
   return (
-    <EditScreen
-      backTo="/operators"
-      backLabel="Back to Operators"
-      title={isNew ? "New Operator" : draft.name || draft.code}
-      subtitle={!isNew && <CopyableCode value={draft.code} />}
-      badges={
-        !isNew && (
-          <Pill variant={draft.active ? "success" : "neutral"}>
-            {draft.active ? "Active" : "Disabled"}
-          </Pill>
-        )
-      }
-      actions={
-        <>
-          {!isNew && (
+    <FormProvider {...form}>
+      <EditScreen
+        backTo="/operators"
+        backLabel="Back to Operators"
+        title={isNew ? "New Operator" : draft.name || draft.code}
+        subtitle={!isNew && <CopyableCode value={draft.code} />}
+        badges={
+          !isNew && (
+            <Pill variant={draft.active ? "success" : "neutral"}>
+              {draft.active ? "Active" : "Disabled"}
+            </Pill>
+          )
+        }
+        actions={
+          <>
+            {!isNew && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 gap-1.5 text-destructive hover:text-destructive"
+                onClick={onDelete}
+                disabled={deleteOperator.isPending || isSaving}
+              >
+                <Trash2 className="h-3.5 w-3.5" /> Delete
+              </Button>
+            )}
+            <Button
+              size="sm"
+              className="h-8 gap-1.5"
+              onClick={onSubmit}
+              disabled={isSaving || (!isNew && !isDirty)}
+            >
+              {isSaving ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Save className="h-3.5 w-3.5" />
+              )}
+              {isNew ? "Create" : "Save"}
+            </Button>
+          </>
+        }
+      >
+        <FormRoot form={form} onSubmit={onSubmit}>
+          <EditCard title="Account">
+            <FormGrid cols={3}>
+              <FormTextField<OperatorFormValues>
+                name="code"
+                label="Code"
+                required
+                mono
+                onBlurTransform={(v) => v.toUpperCase()}
+              />
+              <FormTextField<OperatorFormValues> name="name" label="Name" required />
+              <FormTextField<OperatorFormValues> name="email" label="Email" type="email" />
+              <FormSelectField<OperatorFormValues> name="role" label="Role">
+                {roleOptions.map((r) => (
+                  <option key={r} value={r}>
+                    {r}
+                  </option>
+                ))}
+              </FormSelectField>
+              {isNew && (
+                <FormTextField<OperatorFormValues>
+                  name="password"
+                  label="Password"
+                  type="password"
+                  required
+                />
+              )}
+              <FormCheckboxField<OperatorFormValues>
+                name="active"
+                label="Active"
+                variant="switch"
+                description={draft.active ? "Enabled" : "Disabled"}
+              />
+              <div className="flex flex-col gap-1">
+                <span className="text-[12px] font-medium text-foreground/80">Last Seen</span>
+                <Input value={draft.lastSeen} disabled className="h-8 tabular-nums" />
+              </div>
+            </FormGrid>
+          </EditCard>
+        </FormRoot>
+
+        <EditCard title="Permissions" description="Modules this operator can access.">
+          {permissionsQuery.isPending ? (
+            <p className="text-sm text-muted-foreground">Loading permissions…</p>
+          ) : (
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+              {permissionOptions.map((p) => (
+                <label
+                  key={p}
+                  className="flex items-center gap-2 px-2 py-1.5 rounded border border-border hover:bg-accent cursor-pointer text-[13px]"
+                >
+                  <input
+                    type="checkbox"
+                    checked={selectedPerms.has(p)}
+                    onChange={() => togglePerm(p)}
+                    disabled={isSaving}
+                  />
+                  {p}
+                </label>
+              ))}
+            </div>
+          )}
+        </EditCard>
+
+        <EditCard title="Security">
+          <div className="flex items-center justify-between">
+            <div className="text-[13px] text-muted-foreground">
+              Send a password reset link to {draft.email || "the user"}.
+            </div>
             <Button
               variant="outline"
               size="sm"
-              className="h-8 gap-1.5 text-destructive hover:text-destructive"
-              onClick={onDelete}
-              disabled={deleteOperator.isPending}
-            >
-              <Trash2 className="h-3.5 w-3.5" /> Delete
-            </Button>
-          )}
-          <Button size="sm" className="h-8 gap-1.5" onClick={save} disabled={isSaving}>
-            {isSaving ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            ) : (
-              <Save className="h-3.5 w-3.5" />
-            )}
-            {isNew ? "Create" : "Save"}
-          </Button>
-        </>
-      }
-    >
-      <EditCard title="Account">
-        <FormGrid cols={3}>
-          <Field label="Code" required>
-            <Input
-              value={draft.code}
-              onChange={(e) => set("code", e.target.value.toUpperCase())}
-              className="h-8 font-mono"
-            />
-          </Field>
-          <Field label="Name" required>
-            <Input value={draft.name} onChange={(e) => set("name", e.target.value)} className="h-8" />
-          </Field>
-          <Field label="Email">
-            <Input
-              type="email"
-              value={draft.email}
-              onChange={(e) => set("email", e.target.value)}
               className="h-8"
-            />
-          </Field>
-          <Field label="Role">
-            <select
-              value={draft.role}
-              onChange={(e) => set("role", e.target.value as Operator["role"])}
-              className="h-8 px-2 rounded border border-border bg-background text-[13px] w-full"
+              onClick={sendReset}
+              disabled={forgotPassword.isPending || isNew}
             >
-              {roleOptions.map((r) => (
-                <option key={r} value={r}>
-                  {r}
-                </option>
-              ))}
-            </select>
-          </Field>
-          {isNew && (
-            <Field label="Password" required>
-              <Input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="h-8"
-              />
-            </Field>
-          )}
-          <Field label="Active">
-            <div className="h-8 inline-flex items-center gap-2">
-              <Switch checked={draft.active} onCheckedChange={(v) => set("active", v)} />
-              <span className="text-[13px] text-muted-foreground">
-                {draft.active ? "Enabled" : "Disabled"}
-              </span>
-            </div>
-          </Field>
-          <Field label="Last Seen">
-            <Input value={draft.lastSeen} disabled className="h-8 tabular-nums" />
-          </Field>
-        </FormGrid>
-      </EditCard>
-
-      <EditCard title="Permissions" description="Modules this operator can access.">
-        {permissionsQuery.isPending ? (
-          <p className="text-sm text-muted-foreground">Loading permissions…</p>
-        ) : (
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-            {permissionOptions.map((p) => (
-              <label
-                key={p}
-                className="flex items-center gap-2 px-2 py-1.5 rounded border border-border hover:bg-accent cursor-pointer text-[13px]"
-              >
-                <input
-                  type="checkbox"
-                  checked={selectedPerms.has(p)}
-                  onChange={() => togglePerm(p)}
-                />
-                {p}
-              </label>
-            ))}
+              Reset password
+            </Button>
           </div>
-        )}
-      </EditCard>
+        </EditCard>
 
-      <EditCard title="Security">
-        <div className="flex items-center justify-between">
-          <div className="text-[13px] text-muted-foreground">
-            Send a password reset link to {draft.email || "the user"}.
-          </div>
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-8"
-            onClick={sendReset}
-            disabled={forgotPassword.isPending || isNew}
-          >
-            Reset password
+        <StickyFormFooter>
+          <Button variant="outline" size="sm" onClick={() => nav({ to: "/operators" })} disabled={isSaving}>
+            Cancel
           </Button>
-        </div>
-      </EditCard>
-
-      <StickyFormFooter>
-        <Button variant="outline" size="sm" onClick={() => nav({ to: "/operators" })}>
-          Cancel
-        </Button>
-        <Button size="sm" className="gap-1.5" onClick={save} disabled={isSaving}>
-          {isSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
-          Save Operator
-        </Button>
-      </StickyFormFooter>
-    </EditScreen>
+          <Button
+            size="sm"
+            className="gap-1.5"
+            onClick={onSubmit}
+            disabled={isSaving || (!isNew && !isDirty)}
+          >
+            {isSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+            Save Operator
+          </Button>
+        </StickyFormFooter>
+      </EditScreen>
+    </FormProvider>
   );
 }
+

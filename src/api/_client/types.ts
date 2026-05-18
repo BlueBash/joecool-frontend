@@ -10,9 +10,17 @@ export interface PaginationMeta {
   totalPages: number;
 }
 
+/** Cursor-style pagination URLs from JSON:API `links` (subset exposed to the UI layer). */
+export interface PaginationLinks {
+  next?: string;
+  prev?: string;
+  self?: string;
+}
+
 export interface Paginated<T> {
   items: T[];
   meta: PaginationMeta;
+  links?: PaginationLinks;
 }
 
 export type ID = string | number;

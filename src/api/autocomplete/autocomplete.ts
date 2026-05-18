@@ -1,22 +1,14 @@
 import { queryOptions, useQuery } from "@tanstack/react-query";
-import { createResourceKeys, http } from "@/api/_client";
+import { createResourceKeys } from "@/api/_client";
 import type { ApiError } from "@/api/_client/errors";
+import { fetchReferenceOptions } from "@/lib/reference-sources";
 import type { AutocompleteOption, AutocompleteParams } from "./types";
 
 const autocompleteKeys = createResourceKeys(["autocomplete"]);
 
-interface AutocompleteWireResponse {
-  message?: {
-    message?: string;
-    data?: AutocompleteOption[];
-  };
-}
-
+/** @deprecated Uses platform list APIs — `/autocompletes` is not available on the backend. */
 async function fetchAutocomplete(params: AutocompleteParams): Promise<AutocompleteOption[]> {
-  const res = await http.get<AutocompleteWireResponse>("/autocompletes", {
-    params: { klass: params.klass, search: params.search },
-  });
-  return res.data.message?.data ?? [];
+  return fetchReferenceOptions(params.klass, params.search);
 }
 
 export const autocomplete = {
@@ -35,6 +27,7 @@ export const autocomplete = {
         queryKey: autocompleteKeys.actions("list", params),
         queryFn: () => fetchAutocomplete(params as AutocompleteParams),
         enabled: (opts?.enabled ?? true) && params != null && params.klass.length > 0,
+        staleTime: 60_000,
       }),
   },
 };

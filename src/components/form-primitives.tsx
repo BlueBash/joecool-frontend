@@ -35,7 +35,7 @@ export function FormSection({
 }
 
 interface FieldProps {
-  label: string;
+  label: React.ReactNode;
   hint?: string;
   children: React.ReactNode;
   className?: string;

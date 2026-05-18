@@ -38,21 +38,24 @@ export const F_CATEGORY: FieldDef[] = [
   },
   {
     name: "category_group_id",
-    label: "Category group ID",
-    kind: "text",
-    maxLength: 20,
+    label: "Category group",
+    kind: "reference",
+    referenceKlass: "StockSettings::CategoryGroup",
+    placeholder: "Search category groups…",
   },
   {
     name: "fitting_size_measure_id",
-    label: "Fitting size measure ID",
-    kind: "text",
-    maxLength: 20,
+    label: "Fitting size measure",
+    kind: "reference",
+    referenceKlass: "StockSettings::FittingSizeMeasure",
+    placeholder: "Search measures…",
   },
   {
     name: "dimension_measure_id",
-    label: "Dimension measure ID",
-    kind: "text",
-    maxLength: 20,
+    label: "Dimension measure",
+    kind: "reference",
+    referenceKlass: "StockSettings::DimensionMeasure",
+    placeholder: "Search measures…",
   },
 ];
 
@@ -65,10 +68,11 @@ export const F_FITTING_PACK_ASSORTMENT: FieldDef[] = [
   ...F_CODE_NAME,
   {
     name: "fitting_size_spec_id",
-    label: "Fitting size spec ID",
-    kind: "text",
+    label: "Fitting size spec",
+    kind: "reference",
+    referenceKlass: "StockSettings::FittingSizeSpec",
     required: true,
-    maxLength: 20,
+    placeholder: "Search specs…",
   },
   {
     name: "adjustable",

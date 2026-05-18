@@ -1,5 +1,6 @@
 import { getRouteApi, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
+import { FormProvider } from "react-hook-form";
 import { Trash2, Save, Plus } from "lucide-react";
 import { useTxns } from "@/store";
 import { EditScreen, EditCard, StickyFormFooter } from "@/components/edit-screen";
@@ -11,6 +12,8 @@ import { CopyableCode } from "@/components/app-shell";
 import { InlineNumber, InlineText } from "@/components/inline-edit";
 import { toast } from "sonner";
 import type { Transaction, TxnLine, TxnAllocation, TxnKind, TranType, TxnLineUpdate, TxnAllocationUpdate } from "@/lib/types";
+import { firstFormErrorMessage, useEntityForm } from "@/lib/form";
+import { TransactionFormSchema, type TransactionFormValues } from "./transaction-form-schema";
 
 const routeApi = getRouteApi("/transactions/$id");
 
@@ -21,9 +24,18 @@ export function TransactionEditPage() {
   const nav = useNavigate();
   const { items, update, remove } = useTxns();
   const item = items.find(i => i.id === id);
-  const [draft, setDraft] = useState<Transaction | undefined>(item);
 
-  if (!item || !draft) {
+  const form = useEntityForm<TransactionFormValues>({
+    schema: TransactionFormSchema,
+    defaultValues: item ?? ({} as Transaction),
+    resetValues: item ?? null,
+    resetKey: id,
+  });
+
+  const { watch, setValue, handleSubmit, isDirty, isSubmitting } = form;
+  const draft = watch();
+
+  if (!item || !draft?.id) {
     return (
       <EditScreen backTo="/transactions" title="Transaction not found">
         <p className="text-muted-foreground text-[13px]">This transaction may have been deleted.</p>
@@ -31,7 +43,8 @@ export function TransactionEditPage() {
     );
   }
 
-  const set = <K extends keyof Transaction>(k: K, v: Transaction[K]) => setDraft(d => ({ ...(d as Transaction), [k]: v }));
+  const set = <K extends keyof Transaction>(k: K, v: Transaction[K]) =>
+    setValue(k as keyof TransactionFormValues, v as never, { shouldDirty: true, shouldTouch: true });
 
   const lines = draft.txnLines ?? [];
   const allocs = draft.allocations ?? [];
@@ -41,13 +54,14 @@ export function TransactionEditPage() {
 
   const setLines = (next: TxnLine[]) => {
     const total = next.reduce((s, l) => s + l.qty * l.price, 0);
-    setDraft(d => ({
-      ...(d as Transaction),
-      txnLines: next,
-      lines: next.length,
-      value: (d as Transaction).kind === "Payment" ? -Math.abs(total) : total,
-      exclusiveValue: +(total / 1.2).toFixed(2),
-    }));
+    setValue("txnLines", next, { shouldDirty: true });
+    setValue("lines", next.length, { shouldDirty: true });
+    setValue(
+      "value",
+      draft.kind === "Payment" ? -Math.abs(total) : total,
+      { shouldDirty: true },
+    );
+    setValue("exclusiveValue", +(total / 1.2).toFixed(2), { shouldDirty: true });
   };
   const updLine = (lid: string, p: TxnLineUpdate) => setLines(lines.map(l => l.id === lid ? { ...l, ...p } : l));
   const addLine = () => setLines([...lines, { id: `tl_${Date.now()}`, itemCode: "", description: "", qty: 1, price: 0 }]);
@@ -58,10 +72,20 @@ export function TransactionEditPage() {
   const addAlloc = () => setAllocs([...allocs, { id: `al_${Date.now()}`, invoiceRef: "", amount: Math.max(0, unallocated) }]);
   const rmAlloc = (lid: string) => setAllocs(allocs.filter(a => a.id !== lid));
 
-  const save = () => { update(item.id, draft); toast.success("Transaction saved"); nav({ to: "/transactions" }); };
+  const save = handleSubmit(
+    (values) => {
+      update(item.id, values);
+      toast.success("Transaction saved");
+      nav({ to: "/transactions" });
+    },
+    (errors) => {
+      toast.error(firstFormErrorMessage(errors) ?? "Please fix the highlighted fields");
+    },
+  );
   const onDelete = () => { remove(item.id); toast.success("Removed"); nav({ to: "/transactions" }); };
 
   return (
+    <FormProvider {...form}>
     <EditScreen
       backTo="/transactions"
       backLabel="Back to Transactions"
@@ -78,7 +102,7 @@ export function TransactionEditPage() {
           <Button variant="outline" size="sm" className="h-8 gap-1.5 text-destructive hover:text-destructive" onClick={onDelete}>
             <Trash2 className="h-3.5 w-3.5" /> Delete
           </Button>
-          <Button size="sm" className="h-8 gap-1.5" onClick={save}><Save className="h-3.5 w-3.5" /> Save</Button>
+          <Button size="sm" className="h-8 gap-1.5" onClick={save} disabled={isSubmitting || !isDirty}><Save className="h-3.5 w-3.5" /> Save</Button>
         </>
       }
     >
@@ -241,8 +265,9 @@ export function TransactionEditPage() {
 
       <StickyFormFooter>
         <Button variant="outline" size="sm" onClick={() => nav({ to: "/transactions" })}>Cancel</Button>
-        <Button size="sm" className="gap-1.5" onClick={save}><Save className="h-3.5 w-3.5" /> Save Transaction</Button>
+        <Button size="sm" className="gap-1.5" onClick={save} disabled={isSubmitting || !isDirty}><Save className="h-3.5 w-3.5" /> Save Transaction</Button>
       </StickyFormFooter>
     </EditScreen>
+    </FormProvider>
   );
 }

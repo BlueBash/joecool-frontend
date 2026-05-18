@@ -1,5 +1,6 @@
 import type { StockRow, StockWritePayload } from "@/api/stocks";
 import type { StockItem, StockMaterialRow } from "@/lib/types";
+import { stockFlagCodesFromApi, stockFlagsToApi } from "@/lib/reference";
 
 function asRecord(v: unknown): Record<string, unknown> {
   return v && typeof v === "object" ? (v as Record<string, unknown>) : {};
@@ -14,6 +15,12 @@ function num(v: unknown, fallback = 0): number {
   if (v == null || v === "") return fallback;
   const n = Number(v);
   return Number.isFinite(n) ? n : fallback;
+}
+
+function idNum(v: unknown): number | undefined {
+  if (v == null || v === "") return undefined;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : undefined;
 }
 
 function parseMaterials(raw: unknown): StockMaterialRow[] {
@@ -62,9 +69,11 @@ export function mapRowToStockItem(row: StockRow): StockItem {
     code,
     title,
     category: str(attrs.category_name ?? attrs.category),
+    categoryId: idNum(attrs.category_id),
     onHand,
     reorderLevel,
     color: str(attrs.colour ?? attrs.color, "—"),
+    colourId: idNum(attrs.colour_id),
     size: str(attrs.size),
     introDate,
     costPrice: num(costPrice.landed_factr ?? costPrice.calc_ready ?? attrs.cost),
@@ -73,24 +82,37 @@ export function mapRowToStockItem(row: StockRow): StockItem {
     status: deriveStatus(onHand, reorderLevel),
     imageHue: imageHueFromId(id),
     flags: [],
+    flagCodes: stockFlagCodesFromApi(attrs.flags),
     notes: str(attrs.notes ?? attrs.note),
     editedTitle: str(attrs.edited_title),
     generatedTitle: str(attrs.generated_title),
+    toZoho: !!(attrs.flag_zoho ?? (attrs.flags && asRecord(attrs.flags).flag_zoho)),
     categoryCode: str(attrs.category_code),
     colorCode: str(attrs.colour_code ?? attrs.color_code),
     displayCode: str(attrs.display_code),
     displayName: str(attrs.display_name),
+    displayId: idNum(attrs.display_id),
     uniqueDescription: str(attrs.uniq_desc),
     packBarcode: str(attrs.pack_barcode),
     retailBarcode: str(attrs.retail_barcode),
     assortment: str(attrs.assortment_name ?? attrs.assortment),
+    assortmentId: idNum(attrs.assortment_id),
     collection: str(attrs.collection_name ?? attrs.collection),
+    collectionId: idNum(attrs.collection_id),
     selections: str(attrs.selection_name ?? attrs.selection),
+    selectionId: idNum(attrs.selection_id),
     packaging: str(attrs.packaging_name ?? attrs.packaging),
+    packagingId: idNum(attrs.packaging_id ?? attrs.stock_packaging_id),
     gender: str(attrs.gender_name ?? attrs.gender),
+    genderId: idNum(attrs.gender_id),
     units: str(attrs.unit_name ?? attrs.unit),
+    unitId: idNum(attrs.unit_id),
     itemTariff: str(attrs.tariff_code_name ?? attrs.tariff_code),
+    tariffCodeId: idNum(attrs.tariff_code_id),
     vatRate: str(attrs.vat_rate_code_name ?? attrs.vat_rate_code),
+    vatRateCodeId: idNum(attrs.vat_rate_code_id),
+    joeOnlineRangeId: idNum(attrs.joe_online_range_id),
+    stockBuyerId: idNum(attrs.stock_buyer_id),
     frontLocation: str(attrs.locn_front),
     backLocation: str(attrs.locn_back),
     catalogueLocation: str(attrs.catal_page),
@@ -142,7 +164,28 @@ export function stockItemToPayload(item: StockItem): StockWritePayload {
     weight_grams: item.weightGm,
     volume_ccs: item.volume,
     country_of_origin: item.manufacturerCountry,
+    uniq_desc: item.uniqueDescription || undefined,
+    category_id: item.categoryId,
+    colour_id: item.colourId,
+    assortment_id: item.assortmentId,
+    collection_id: item.collectionId,
+    selection_id: item.selectionId,
+    gender_id: item.genderId,
+    unit_id: item.unitId,
+    packaging_id: item.packagingId,
+    stock_packaging_id: item.packagingId,
+    display_id: item.displayId,
+    tariff_code_id: item.tariffCodeId,
+    vat_rate_code_id: item.vatRateCodeId,
+    joe_online_range_id: item.joeOnlineRangeId,
+    stock_buyer_id: item.stockBuyerId,
   };
+
+  const flags = stockFlagsToApi(item.flagCodes);
+  if (flags) payload.flags = flags;
+  if (item.toZoho != null) {
+    payload.flags = { ...(payload.flags as Record<string, boolean> | undefined), flag_zoho: !!item.toZoho };
+  }
 
   if (item.materials?.length) {
     const materials: Record<string, string> = {};

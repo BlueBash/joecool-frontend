@@ -51,7 +51,7 @@ function OrdersListing() {
     { key: "actions", header: "Actions", width: "90px", align: "right",
       cell: r => (
         <RowActions>
-          <EditLink to="/orders/$id" params={{ id: r.id }} title="Edit order" />
+          <EditLink to="/order/$id" params={{ id: r.id }} title="Edit order" />
           <DeleteButton onClick={() => { remove(r.id); toast.success("Removed"); }} />
         </RowActions>
       ) },

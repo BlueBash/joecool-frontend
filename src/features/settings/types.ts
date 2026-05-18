@@ -17,12 +17,14 @@ export interface SettingItemLike {
 /** Erased resource type used by the registry — UI works against this shape. */
 export type SettingsResource = Resource<SettingItemLike, unknown, unknown>;
 
-export type FieldKind = "text" | "textarea";
+export type FieldKind = "text" | "textarea" | "reference";
 
 export interface FieldDef {
   name: string;
   label: string;
   kind: FieldKind;
+  /** Required when `kind` is `reference` — autocomplete klass. */
+  referenceKlass?: string;
   required?: boolean;
   placeholder?: string;
   maxLength?: number;
