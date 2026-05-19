@@ -44,3 +44,27 @@ export const addressAgents = createJsonApiResource<AddressSettingsCatalogRow>(
   "/address_settings/agents",
   "agent",
 );
+
+export const addressSpecialCustomers = createJsonApiResource<AddressSettingsCatalogRow>(
+  ["address-settings", "special-customers"],
+  "/address_settings/special_customers",
+  "special_customer",
+);
+
+export const addressUpsServices = createJsonApiResource<AddressSettingsCatalogRow>(
+  ["address-settings", "ups-services"],
+  "/address_settings/ups_services",
+  "ups_service",
+);
+
+export const addressContactDepts = createJsonApiResource<AddressSettingsCatalogRow>(
+  ["address-settings", "contact-depts"],
+  "/address_settings/contact_depts",
+  "contact_dept",
+);
+
+export const addressContactRoles = createJsonApiResource<AddressSettingsCatalogRow>(
+  ["address-settings", "contact-roles"],
+  "/address_settings/contact_roles",
+  "contact_role",
+);

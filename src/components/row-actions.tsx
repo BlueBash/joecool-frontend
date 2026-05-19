@@ -8,7 +8,10 @@ interface RowActionsProps {
 
 export function RowActions({ children }: RowActionsProps) {
   return (
-    <div className="inline-flex items-center gap-0.5 justify-end" onClick={(e) => e.stopPropagation()}>
+    <div
+      className="inline-flex items-center gap-0.5 justify-end"
+      onClick={(e) => e.stopPropagation()}
+    >
       {children}
     </div>
   );
@@ -21,9 +24,7 @@ interface EditLinkProps {
   className?: string;
 }
 
-export function EditLink({
-  to, params, title = "Edit", className,
-}: EditLinkProps) {
+export function EditLink({ to, params, title = "Edit", className }: EditLinkProps) {
   return (
     <Link
       to={to as never}
@@ -46,12 +47,13 @@ interface DeleteButtonProps {
   title?: string;
 }
 
-export function DeleteButton({
-  onClick, title = "Delete",
-}: DeleteButtonProps) {
+export function DeleteButton({ onClick, title = "Delete" }: DeleteButtonProps) {
   return (
     <button
-      onClick={(e) => { e.stopPropagation(); onClick(); }}
+      onClick={(e) => {
+        e.stopPropagation();
+        onClick();
+      }}
       className="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
       title={title}
       aria-label={title}

@@ -2,7 +2,15 @@ import { useId, type ChangeEvent } from "react";
 import { ReferenceSelect } from "@/components/reference-select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import type { FieldDef } from "../types";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface FieldControlProps {
   field: FieldDef;
@@ -13,7 +21,14 @@ interface FieldControlProps {
   onBlur?: () => void;
 }
 
-export function FieldControl({ field, value, error, disabled, onChange, onBlur }: FieldControlProps) {
+export function FieldControl({
+  field,
+  value,
+  error,
+  disabled,
+  onChange,
+  onBlur,
+}: FieldControlProps) {
   const id = useId();
   const errorId = error ? `${id}-error` : undefined;
 
@@ -28,15 +43,12 @@ export function FieldControl({ field, value, error, disabled, onChange, onBlur }
 
   return (
     <div className="flex flex-col gap-1">
-      <Label
-        htmlFor={id}
-        className="text-[11px] uppercase tracking-wide text-muted-foreground"
-      >
+      <Label htmlFor={id} className="text-[11px] uppercase tracking-wide text-muted-foreground">
         {field.label}
         {field.required && <span className="text-destructive ml-0.5">*</span>}
       </Label>
 
-      {field.kind === "reference" && field.referenceKlass ? (
+      {field.type === "reference" && field.referenceKlass ? (
         <ReferenceSelect
           klass={field.referenceKlass}
           value={value || null}
@@ -45,7 +57,7 @@ export function FieldControl({ field, value, error, disabled, onChange, onBlur }
           inputClassName="h-8 text-[13px]"
           onChange={(id) => onChange(id == null ? "" : String(id))}
         />
-      ) : field.kind === "textarea" ? (
+      ) : field.type === "textarea" ? (
         <textarea
           id={id}
           value={value}
@@ -58,6 +70,43 @@ export function FieldControl({ field, value, error, disabled, onChange, onBlur }
           className="min-h-[36px] rounded-md border border-input bg-background px-3 py-1.5 text-[13px] shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
           {...ariaProps}
         />
+      ) : field.type === "boolean" ? (
+        <Checkbox
+          id={id}
+          checked={value == "true"}
+          onCheckedChange={(checked: boolean) => onChange(checked ? "true" : "false")}
+          disabled={disabled}
+          {...ariaProps}
+        />
+      ) : field.type === "number" ? (
+        <Input
+          id={id}
+          type="number"
+          value={value}
+          onChange={handleChange}
+          onBlur={onBlur}
+          placeholder={field.placeholder}
+          disabled={disabled}
+          className="h-8 text-[13px]"
+          {...ariaProps}
+        />
+      ) : field.type === "select" && field.options?.length ? (
+        <Select
+          value={value || undefined}
+          onValueChange={(v) => onChange(v)}
+          disabled={disabled}
+        >
+          <SelectTrigger id={id} className="h-8 text-[13px]" aria-invalid={ariaProps["aria-invalid"]}>
+            <SelectValue placeholder={field.placeholder ?? "Select…"} />
+          </SelectTrigger>
+          <SelectContent>
+            {field.options.map((opt) => (
+              <SelectItem key={opt.value} value={opt.value}>
+                {opt.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       ) : (
         <Input
           id={id}

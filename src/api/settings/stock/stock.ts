@@ -10,20 +10,22 @@ function mk(
   bodyKey: string,
   defaultListParams?: ListParams,
 ) {
+  const defaultDetailParams =
+    defaultListParams?.include != null ? { include: defaultListParams.include } : undefined;
+
   return createResource<StockSettingRow, Record<string, unknown>, Record<string, unknown>>({
     scope,
     path,
     bodyKey,
     defaultListParams,
+    defaultDetailParams,
     transform: {
-      entity: (raw, includedMap) =>
-        denormalizeJsonApiEntity(raw, includedMap) as StockSettingRow,
+      entity: (raw, includedMap) => denormalizeJsonApiEntity(raw, includedMap) as StockSettingRow,
       list: (envelope, params) =>
         paginatedFromJsonApi(
           envelope as { data?: unknown; meta?: JsonApiListMeta },
           params,
-          (row, includedMap) =>
-            denormalizeJsonApiEntity(row, includedMap) as StockSettingRow,
+          (row, includedMap) => denormalizeJsonApiEntity(row, includedMap) as StockSettingRow,
         ),
     },
   });
@@ -77,6 +79,9 @@ export const stockFittingMessages = mk(
   ["stock-settings", "fitting-messages"],
   "/stock_settings/fitting_messages",
   "fitting_message",
+  {
+    include: "category,fitting_size_pack_assortment,fitting_size_spec,fitting_size_measure",
+  },
 );
 
 // --- Dimensions ---
@@ -103,6 +108,9 @@ export const stockDimensionMessages = mk(
   ["stock-settings", "dimension-messages"],
   "/stock_settings/dimension_messages",
   "dimension_message",
+  {
+    include: "category,dimension_pack_assortment,dimension_spec,dimension_measure",
+  },
 );
 
 // --- Stock metadata ---

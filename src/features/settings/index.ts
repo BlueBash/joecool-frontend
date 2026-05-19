@@ -5,14 +5,21 @@ export { SettingsPage } from "./SettingsPage";
 export {
   FieldControl,
   ResourceRowForm,
+  SettingsResourceForm,
   SettingsResourceListing,
   SettingsSectionPage,
+  SettingsSectionPlaceholder,
   buildListingColumns,
   buildRowActionsColumn,
 } from "./components";
 
 export { useResourceListingState } from "./hooks/useResourceListingState";
-export { getSettingsResource, settingsResourceRegistry } from "./registry";
+export {
+  getSettingsSection,
+  getSettingsResource,
+  settingsResourceRegistry,
+  stockSettingsSections,
+} from "./registry";
 export {
   COMMON_FIELDS_FOR_FORM,
   DEFAULT_PAGE_SIZE,
@@ -20,6 +27,7 @@ export {
 } from "./constants";
 export {
   hasErrors,
+  readFieldValue,
   toFormPayload,
   toFormValues,
   validateFormValues,
@@ -30,14 +38,19 @@ export type {
   BuildListingColumnsFn,
   EditingState,
   FieldDef,
-  FieldKind,
+  FieldType,
+  FieldSelectOption,
   FormErrors,
   FormMode,
   FormPayload,
   FormValues,
   SettingItemLike,
+  SettingsCustomSectionProps,
+  SettingsEntryBase,
+  SettingsFormEntry,
   SettingsResource,
   SettingsResourceEntry,
+  SettingsSectionConfig,
   SettingsSidebarExpandedByParent,
   SidebarGroupProps,
   StockSubgroupRowProps,

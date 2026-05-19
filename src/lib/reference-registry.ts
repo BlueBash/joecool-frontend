@@ -26,6 +26,12 @@ export const ReferenceKlass = {
   DimensionMeasure: "StockSettings::DimensionMeasure",
   DimensionSpec: "StockSettings::DimensionSpec",
   RingSize: "StockSettings::RingSize",
+  AmazonTemplate: "StockSettings::AmazonTemplate",
+  AmazonProductType: "StockSettings::AmazonProductType",
+  AmazonUsItemType: "StockSettings::AmazonUsItemType",
+  AmazonMaterial: "StockSettings::AmazonMaterial",
+  AmazonMetalType: "StockSettings::AmazonMetalType",
+  AmazonMetalStamp: "StockSettings::AmazonMetalStamp",
   Country: "Country",
   AddressCategory: "AddressSettings::Category",
   Area: "Area",
@@ -48,6 +54,13 @@ export const ReferenceKlass = {
   ShipMethod: "AddressSettings::ShipMethod",
   ShippingCharge: "ShippingCharge",
   Currency: "Currency",
+  UpsService: "AddressSettings::UpsService",
+  MessagePurpose: "MessageSettings::MessagePurpose",
+  GeneralMessage: "MessageSettings::GeneralMessage",
+  Document: "Document",
+  MapAccountant: "MapAccountant",
+  CashFlowSection: "CashFlowSection",
+  ProfitLossSection: "ProfitLossSection",
 } as const;
 
 export type ReferenceKlassName = (typeof ReferenceKlass)[keyof typeof ReferenceKlass];

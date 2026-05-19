@@ -36,23 +36,7 @@ import {
   stockUnits,
   stockWebStockAvailabilityMessages,
 } from "@/api/settings/stock";
-import type { SettingsResource, SettingsResourceEntry } from "./types";
-import {
-  F_AMAZON_BROWSE_NODE,
-  F_AMAZON_PRODUCT_TYPE,
-  F_CATEGORY,
-  F_CODE_NAME,
-  F_CODE_NAME_VALUES,
-  F_COST_ROW,
-  F_DIMENSION_MESSAGE,
-  F_FITTING_MESSAGE,
-  F_FITTING_PACK_ASSORTMENT,
-  F_MARKETING_BLURB,
-  F_MATERIAL,
-  F_NAME,
-  F_RING_SIZE,
-  F_WEB_STOCK_AVAILABILITY,
-} from "./fields";
+import type { SettingsResource, SettingsSectionConfig } from "../types";
 import {
   mapAmazonBrowseNodePayload,
   mapAmazonProductTypePayload,
@@ -61,313 +45,385 @@ import {
   mapCostAssemblyPayload,
   mapCostPackingPayload,
   mapDimensionMessagePayload,
+  mapDisplayPayload,
   mapFittingMessagePayload,
   mapFittingPackAssortmentPayload,
+  mapJoeOnlineRangePayload,
   mapMarketingBlurbPayload,
   mapMaterialPayload,
   mapNameOnlyPayload,
   mapRingSizePayload,
   mapSpecWithValuesPayload,
   mapWebStockAvailabilityPayload,
-} from "./payload-maps";
+} from "../payload-maps";
+import { mapDimensionMessageFromRow, mapFittingMessageFromRow } from "../row-maps";
+import { listing } from "./helpers";
+import { SettingsModuleFormData } from "./columns/formFields";
+import { buildSettingListingColumns } from "./columns/listingData";
 
-export const settingsResourceRegistry: Partial<Record<string, SettingsResourceEntry>> = {
-  "stock/category/categories": {
+export const stockSettingsSections: Partial<Record<string, SettingsSectionConfig>> = {
+  "stock/category/categories": listing({
     resource: stockCategories as unknown as SettingsResource,
     singular: "Category",
     plural: "Categories",
     bodyKey: "category",
-    fields: F_CATEGORY,
+    fields: SettingsModuleFormData.category,
     mapWritePayload: mapCategoryPayload,
-  },
-  "stock/category/groups": {
+    buildListingColumns: buildSettingListingColumns,
+  }),
+  "stock/category/groups": listing({
     resource: stockCategoryGroups as unknown as SettingsResource,
     singular: "Category group",
     plural: "Category groups",
     bodyKey: "category_group",
-    fields: F_CODE_NAME,
+    fields: SettingsModuleFormData.category_group,
     mapWritePayload: mapCodeNamePayload,
-  },
-  "stock/category/packaging": {
+    buildListingColumns: buildSettingListingColumns,
+  }),
+  "stock/category/packaging": listing({
     resource: stockPackagings as unknown as SettingsResource,
     singular: "Packaging",
     plural: "Packaging types",
     bodyKey: "packaging",
-    fields: F_CODE_NAME,
+    fields: SettingsModuleFormData.packaging,
     mapWritePayload: mapCodeNamePayload,
-  },
+    buildListingColumns: buildSettingListingColumns,
+  }),
 
-  "stock/fittings/sizes-pack-assortments": {
+  "stock/fittings/sizes-pack-assortments": listing({
     resource: stockFittingSizePackAssortments as unknown as SettingsResource,
     singular: "Pack assortment",
     plural: "Pack assortments",
     bodyKey: "fitting_size_pack_assortment",
-    fields: F_FITTING_PACK_ASSORTMENT,
+    fields: SettingsModuleFormData.fitting_size_pack_assortment,
     mapWritePayload: mapFittingPackAssortmentPayload,
-  },
-  "stock/fittings/sizes-specs": {
+    buildListingColumns: buildSettingListingColumns,
+  }),
+  "stock/fittings/sizes-specs": listing({
     resource: stockFittingSizeSpecs as unknown as SettingsResource,
     singular: "Fitting size spec",
     plural: "Fitting size specs",
     bodyKey: "fitting_size_spec",
-    fields: F_CODE_NAME_VALUES,
+    fields: SettingsModuleFormData.fitting_size_spec,
     mapWritePayload: mapSpecWithValuesPayload,
-  },
-  "stock/fittings/sizes-measures": {
+    buildListingColumns: buildSettingListingColumns,
+
+  }),
+  "stock/fittings/sizes-measures": listing({
     resource: stockFittingSizeMeasures as unknown as SettingsResource,
     singular: "Fitting size measure",
     plural: "Fitting size measures",
     bodyKey: "fitting_size_measure",
-    fields: F_CODE_NAME,
+    fields: SettingsModuleFormData.fitting_size_measure,
     mapWritePayload: mapCodeNamePayload,
-  },
-  "stock/fittings/messages": {
+    buildListingColumns: buildSettingListingColumns,
+
+  }),
+  "stock/fittings/messages": listing({
     resource: stockFittingMessages as unknown as SettingsResource,
     singular: "Fitting message",
     plural: "Fitting messages",
     bodyKey: "fitting_message",
-    fields: F_FITTING_MESSAGE,
+    fields: SettingsModuleFormData.fitting_message,
     mapWritePayload: mapFittingMessagePayload,
-  },
+    buildListingColumns: buildSettingListingColumns,
 
-  "stock/dimensions/pack-assortments": {
+    mapFromRow: mapFittingMessageFromRow,
+  }),
+
+  "stock/dimensions/pack-assortments": listing({
     resource: stockDimensionPackAssortments as unknown as SettingsResource,
     singular: "Dimension pack assortment",
     plural: "Dimension pack assortments",
     bodyKey: "dimension_pack_assortment",
-    fields: F_CODE_NAME,
+    fields: SettingsModuleFormData.dimension_pack_assortment,
     mapWritePayload: mapCodeNamePayload,
-  },
-  "stock/dimensions/specs": {
+    buildListingColumns: buildSettingListingColumns,
+
+  }),
+  "stock/dimensions/specs": listing({
     resource: stockDimensionSpecs as unknown as SettingsResource,
     singular: "Dimension spec",
     plural: "Dimension specs",
     bodyKey: "dimension_spec",
-    fields: F_CODE_NAME_VALUES,
+    fields: SettingsModuleFormData.dimension_spec,
     mapWritePayload: mapSpecWithValuesPayload,
-  },
-  "stock/dimensions/measures": {
+    buildListingColumns: buildSettingListingColumns,
+
+  }),
+  "stock/dimensions/measures": listing({
     resource: stockDimensionMeasures as unknown as SettingsResource,
     singular: "Dimension measure",
     plural: "Dimension measures",
     bodyKey: "dimension_measure",
-    fields: F_CODE_NAME,
+    fields: SettingsModuleFormData.dimension_measure,
     mapWritePayload: mapCodeNamePayload,
-  },
-  "stock/dimensions/messages": {
+    buildListingColumns: buildSettingListingColumns,
+
+  }),
+  "stock/dimensions/messages": listing({
     resource: stockDimensionMessages as unknown as SettingsResource,
     singular: "Dimension message",
     plural: "Dimension messages",
     bodyKey: "dimension_message",
-    fields: F_DIMENSION_MESSAGE,
+    fields: SettingsModuleFormData.dimension_message,
     mapWritePayload: mapDimensionMessagePayload,
-  },
+    buildListingColumns: buildSettingListingColumns,
 
-  "stock/stock/selections": {
+    mapFromRow: mapDimensionMessageFromRow,
+  }),
+
+  "stock/stock/selections": listing({
     resource: stockSelections as unknown as SettingsResource,
     singular: "Selection",
     plural: "Selections",
     bodyKey: "selection",
-    fields: F_CODE_NAME,
+    fields: SettingsModuleFormData.selection,
     mapWritePayload: mapCodeNamePayload,
-  },
-  "stock/stock/collections": {
+    buildListingColumns: buildSettingListingColumns,
+
+  }),
+  "stock/stock/collections": listing({
     resource: stockCollections as unknown as SettingsResource,
     singular: "Collection",
     plural: "Collections",
     bodyKey: "collection",
-    fields: F_CODE_NAME,
+    fields: SettingsModuleFormData.collection,
     mapWritePayload: mapCodeNamePayload,
-  },
-  "stock/stock/stock-ranges": {
+    buildListingColumns: buildSettingListingColumns,
+
+  }),
+  "stock/stock/stock-ranges": listing({
     resource: stockRanges as unknown as SettingsResource,
     singular: "Range",
     plural: "Ranges",
     bodyKey: "range",
-    fields: F_CODE_NAME,
+    fields: SettingsModuleFormData.range,
     mapWritePayload: mapCodeNamePayload,
-  },
-  "stock/stock/marketing": {
+    buildListingColumns: buildSettingListingColumns,
+
+  }),
+  "stock/stock/marketing": listing({
     resource: stockMarketingBlurbs as unknown as SettingsResource,
     singular: "Marketing blurb",
     plural: "Marketing blurbs",
     bodyKey: "marketing_blurb",
-    fields: F_MARKETING_BLURB,
+    fields: SettingsModuleFormData.marketing_blurb,
     mapWritePayload: mapMarketingBlurbPayload,
-  },
+    buildListingColumns: buildSettingListingColumns,
 
-  "stock/amazon/templates": {
+  }),
+
+  "stock/amazon/templates": listing({
     resource: stockAmazonTemplates as unknown as SettingsResource,
     singular: "Amazon template",
     plural: "Amazon templates",
     bodyKey: "amazon_template",
-    fields: F_CODE_NAME,
+    fields: SettingsModuleFormData.amazon_template,
     mapWritePayload: mapCodeNamePayload,
-  },
-  "stock/amazon/product-types": {
+    buildListingColumns: buildSettingListingColumns,
+
+  }),
+  "stock/amazon/product-types": listing({
     resource: stockAmazonProductTypes as unknown as SettingsResource,
     singular: "Amazon product type",
     plural: "Amazon product types",
     bodyKey: "amazon_product_type",
-    fields: F_AMAZON_PRODUCT_TYPE,
+    fields: SettingsModuleFormData.amazon_product_type,
     mapWritePayload: mapAmazonProductTypePayload,
-  },
-  "stock/amazon/browse-nodes": {
+    buildListingColumns: buildSettingListingColumns,
+
+  }),
+  "stock/amazon/browse-nodes": listing({
     resource: stockAmazonBrowseNodes as unknown as SettingsResource,
     singular: "Amazon browse node",
     plural: "Amazon browse nodes",
     bodyKey: "amazon_browse_node",
-    fields: F_AMAZON_BROWSE_NODE,
+    fields: SettingsModuleFormData.amazon_browse_node,
     mapWritePayload: mapAmazonBrowseNodePayload,
-  },
-  "stock/amazon/materials": {
+    buildListingColumns: buildSettingListingColumns,
+
+  }),
+  "stock/amazon/materials": listing({
     resource: stockAmazonMaterials as unknown as SettingsResource,
     singular: "Amazon material",
     plural: "Amazon materials",
     bodyKey: "amazon_material",
-    fields: F_NAME,
+    fields: SettingsModuleFormData.amazon_material,
     mapWritePayload: mapNameOnlyPayload,
-  },
-  "stock/amazon/metal-types": {
+    buildListingColumns: buildSettingListingColumns,
+
+  }),
+  "stock/amazon/metal-types": listing({
     resource: stockAmazonMetalTypes as unknown as SettingsResource,
     singular: "Amazon metal type",
     plural: "Amazon metal types",
     bodyKey: "amazon_metal_type",
-    fields: F_NAME,
+    fields: SettingsModuleFormData.amazon_metal_type,
     mapWritePayload: mapNameOnlyPayload,
-  },
-  "stock/amazon/metal-stamps": {
+    buildListingColumns: buildSettingListingColumns,
+
+  }),
+  "stock/amazon/metal-stamps": listing({
     resource: stockAmazonMetalStamps as unknown as SettingsResource,
     singular: "Amazon metal stamp",
     plural: "Amazon metal stamps",
     bodyKey: "amazon_metal_stamp",
-    fields: F_NAME,
+    fields: SettingsModuleFormData.amazon_metal_stamp,
     mapWritePayload: mapNameOnlyPayload,
-  },
-  "stock/amazon/us-item-types": {
+    buildListingColumns: buildSettingListingColumns,
+
+  }),
+  "stock/amazon/us-item-types": listing({
     resource: stockAmazonUsItemTypes as unknown as SettingsResource,
     singular: "Amazon US item type",
     plural: "Amazon US item types",
     bodyKey: "amazon_us_item_type",
-    fields: F_NAME,
+    fields: SettingsModuleFormData.amazon_us_item_type,
     mapWritePayload: mapNameOnlyPayload,
-  },
+    buildListingColumns: buildSettingListingColumns,
 
-  "stock/colors": {
+  }),
+
+  "stock/colors": listing({
     resource: stockColours as unknown as SettingsResource,
     singular: "Colour",
     plural: "Colours",
     bodyKey: "colour",
-    fields: F_CODE_NAME,
+    fields: SettingsModuleFormData.colour,
     mapWritePayload: mapCodeNamePayload,
-  },
-  "stock/colors-options": {
+    buildListingColumns: buildSettingListingColumns,
+
+  }),
+  "stock/colors-options": listing({
     resource: stockColourOptions as unknown as SettingsResource,
     singular: "Colour option",
     plural: "Colour options",
     bodyKey: "colour_option",
-    fields: F_CODE_NAME,
+    fields: SettingsModuleFormData.colour_option,
     mapWritePayload: mapCodeNamePayload,
-  },
-  "stock/sizes": {
+    buildListingColumns: buildSettingListingColumns,
+
+  }),
+  "stock/sizes": listing({
     resource: stockRingSizes as unknown as SettingsResource,
     singular: "Ring size",
     plural: "Ring sizes",
     bodyKey: "ring_size",
-    fields: F_RING_SIZE,
+    fields: SettingsModuleFormData.ring_size,
     mapWritePayload: mapRingSizePayload,
-  },
-  "stock/sizes/web-availability": {
+    buildListingColumns: buildSettingListingColumns,
+
+  }),
+  "stock/sizes/web-availability": listing({
     resource: stockWebStockAvailabilityMessages as unknown as SettingsResource,
     singular: "Web availability message",
     plural: "Web availability messages",
     bodyKey: "web_stock_availability_message",
-    fields: F_WEB_STOCK_AVAILABILITY,
+    fields: SettingsModuleFormData.web_stock_availability_message,
     mapWritePayload: mapWebStockAvailabilityPayload,
-  },
-  "stock/units": {
+    buildListingColumns: buildSettingListingColumns,
+
+  }),
+  "stock/units": listing({
     resource: stockUnits as unknown as SettingsResource,
     singular: "Unit",
     plural: "Units",
     bodyKey: "unit",
-    fields: F_CODE_NAME,
+    fields: SettingsModuleFormData.unit,
     mapWritePayload: mapCodeNamePayload,
-  },
-  "stock/carding": {
+    buildListingColumns: buildSettingListingColumns,
+
+  }),
+  "stock/carding": listing({
     resource: stockCardings as unknown as SettingsResource,
     singular: "Carding",
     plural: "Cardings",
     bodyKey: "carding",
-    fields: F_CODE_NAME,
+    fields: SettingsModuleFormData.carding,
     mapWritePayload: mapCodeNamePayload,
-  },
-  "stock/displays": {
+    buildListingColumns: buildSettingListingColumns,
+
+  }),
+  "stock/displays": listing({
     resource: stockDisplays as unknown as SettingsResource,
     singular: "Display",
     plural: "Displays",
     bodyKey: "display",
-    fields: F_CODE_NAME,
-    mapWritePayload: mapCodeNamePayload,
-  },
-  "stock/assembly-costs": {
+    fields: SettingsModuleFormData.display,
+    mapWritePayload: mapDisplayPayload,
+    buildListingColumns: buildSettingListingColumns,
+
+  }),
+  "stock/assembly-costs": listing({
     resource: stockCostsAssembly as unknown as SettingsResource,
     singular: "Assembly cost",
     plural: "Assembly costs",
     bodyKey: "cost",
-    fields: F_COST_ROW,
+    fields: SettingsModuleFormData.cost,
     mapWritePayload: mapCostAssemblyPayload,
-  },
-  "stock/packing-costs": {
+    buildListingColumns: buildSettingListingColumns,
+
+  }),
+  "stock/packing-costs": listing({
     resource: stockCostsPacking as unknown as SettingsResource,
     singular: "Packing cost",
     plural: "Packing costs",
     bodyKey: "cost",
-    fields: F_COST_ROW,
+    fields: SettingsModuleFormData.cost,
     mapWritePayload: mapCostPackingPayload,
-  },
+    buildListingColumns: buildSettingListingColumns,
 
-  "stock/other-assortments": {
+  }),
+
+  "stock/other-assortments": listing({
     resource: stockAssortments as unknown as SettingsResource,
     singular: "Assortment",
     plural: "Assortments",
     bodyKey: "assortment",
-    fields: F_CODE_NAME,
+    fields: SettingsModuleFormData.assortment,
     mapWritePayload: mapCodeNamePayload,
-  },
-  "stock/other-genders": {
+    buildListingColumns: buildSettingListingColumns,
+
+  }),
+  "stock/other-genders": listing({
     resource: stockTargetGenders as unknown as SettingsResource,
     singular: "Target gender",
     plural: "Target genders",
     bodyKey: "target_gender",
-    fields: F_CODE_NAME,
+    fields: SettingsModuleFormData.target_gender,
     mapWritePayload: mapCodeNamePayload,
-  },
-  "stock/other-materials": {
+    buildListingColumns: buildSettingListingColumns,
+
+  }),
+  "stock/other-materials": listing({
     resource: stockMaterials as unknown as SettingsResource,
     singular: "Material",
     plural: "Materials",
     bodyKey: "material",
-    fields: F_MATERIAL,
+    fields: SettingsModuleFormData.material,
     mapWritePayload: mapMaterialPayload,
-  },
-  "stock/other-online-ranges": {
+    buildListingColumns: buildSettingListingColumns,
+
+  }),
+  "stock/other-online-ranges": listing({
     resource: stockJoeOnlineRanges as unknown as SettingsResource,
     singular: "Joe online range",
     plural: "Joe online ranges",
     bodyKey: "joe_online_range",
-    fields: F_CODE_NAME,
-    mapWritePayload: mapCodeNamePayload,
-  },
-  "stock/other-custom-tariff-codes": {
+    fields: SettingsModuleFormData.joe_online_range,
+    mapWritePayload: mapJoeOnlineRangePayload,
+    buildListingColumns: buildSettingListingColumns,
+
+  }),
+  "stock/other-custom-tariff-codes": listing({
     resource: stockCustomTarrifCodes as unknown as SettingsResource,
     singular: "Custom tariff code",
     plural: "Custom tariff codes",
     bodyKey: "custom_tarrif_code",
-    fields: F_CODE_NAME,
+    fields: SettingsModuleFormData.custom_tarrif_code,
     mapWritePayload: mapCodeNamePayload,
-  },
-};
+    buildListingColumns: buildSettingListingColumns,
 
-export function getSettingsResource(slug: string): SettingsResourceEntry | undefined {
-  return settingsResourceRegistry[slug];
-}
+  }),
+};

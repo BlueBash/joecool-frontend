@@ -3,6 +3,14 @@ import * as addressSettings from "@/api/address-settings/catalogs";
 import * as platform from "@/api/platform/catalogs";
 import { stockBuyers } from "@/api/stock-buyers";
 import { stockPriceCategories } from "@/api/stocks";
+import { settingsGeneralMessages, settingsMessagePurposes } from "@/api/settings/messages";
+import {
+  settingsCashFlowSections,
+  settingsDocuments,
+  settingsMapAccountants,
+  settingsProfitLossSections,
+} from "@/api/settings/system";
+import { settingsAddressUpsServices } from "@/api/settings/address";
 import {
   stockAssortments,
   stockCategories,
@@ -23,6 +31,12 @@ import {
   stockSelections,
   stockTargetGenders,
   stockUnits,
+  stockAmazonMaterials,
+  stockAmazonMetalStamps,
+  stockAmazonMetalTypes,
+  stockAmazonProductTypes,
+  stockAmazonTemplates,
+  stockAmazonUsItemTypes,
 } from "@/api/settings/stock/stock";
 import { suppliers } from "@/api/suppliers";
 import type { ReferenceKlassName } from "@/lib/reference-registry";
@@ -60,6 +74,12 @@ export const REFERENCE_SOURCES: Record<ReferenceKlassName, ListFn> = {
   "StockSettings::DimensionPackAssortment": bindList(stockDimensionPackAssortments.api.list),
   "StockSettings::DimensionMeasure": bindList(stockDimensionMeasures.api.list),
   "StockSettings::DimensionSpec": bindList(stockDimensionSpecs.api.list),
+  "StockSettings::AmazonTemplate": bindList(stockAmazonTemplates.api.list),
+  "StockSettings::AmazonProductType": bindList(stockAmazonProductTypes.api.list),
+  "StockSettings::AmazonUsItemType": bindList(stockAmazonUsItemTypes.api.list),
+  "StockSettings::AmazonMaterial": bindList(stockAmazonMaterials.api.list),
+  "StockSettings::AmazonMetalType": bindList(stockAmazonMetalTypes.api.list),
+  "StockSettings::AmazonMetalStamp": bindList(stockAmazonMetalStamps.api.list),
   VatRateCode: bindList(platform.vatRateCodes.api.list),
   StockBuyer: bindList(stockBuyers.api.list),
   Supplier: bindList(suppliers.api.list),
@@ -85,6 +105,13 @@ export const REFERENCE_SOURCES: Record<ReferenceKlassName, ListFn> = {
   "AddressSettings::ShipMethod": bindList(addressSettings.addressShipMethods.api.list),
   ShippingCharge: bindList(platform.shippingCharges.api.list),
   Currency: bindList(platform.currencies.api.list),
+  "AddressSettings::UpsService": bindList(settingsAddressUpsServices.api.list),
+  "MessageSettings::MessagePurpose": bindList(settingsMessagePurposes.api.list),
+  "MessageSettings::GeneralMessage": bindList(settingsGeneralMessages.api.list),
+  Document: bindList(settingsDocuments.api.list),
+  MapAccountant: bindList(settingsMapAccountants.api.list),
+  CashFlowSection: bindList(settingsCashFlowSections.api.list),
+  ProfitLossSection: bindList(settingsProfitLossSections.api.list),
 };
 
 function rowToOption(row: CatalogRow): ReferenceOption {

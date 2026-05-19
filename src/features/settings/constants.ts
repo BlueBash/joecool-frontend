@@ -22,7 +22,7 @@ export const COMMON_FIELDS_FOR_FORM: FieldDef[] = [
   {
     name: "code",
     label: "Code",
-    kind: "text",
+    type: "text",
     required: true,
     placeholder: "Short code",
     maxLength: 80,
@@ -30,7 +30,7 @@ export const COMMON_FIELDS_FOR_FORM: FieldDef[] = [
   {
     name: "name",
     label: "Name",
-    kind: "text",
+    type: "text",
     required: true,
     placeholder: "Display name",
     maxLength: 200,

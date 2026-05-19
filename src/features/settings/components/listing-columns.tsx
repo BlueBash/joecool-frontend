@@ -41,12 +41,6 @@ export function buildListingColumns(
 ): Column<SettingItemLike>[] {
   return [
     {
-      key: "name",
-      header: "Name",
-      sortValue: (r) => r.name,
-      cell: (r) => <span className="font-medium">{r.name}</span>,
-    },
-    {
       key: "detail",
       header: "Code",
       cell: (r) => {
@@ -55,8 +49,14 @@ export function buildListingColumns(
         const blurb = typeof blurbRaw === "string" ? blurbRaw : null;
         const desc = typeof r.description === "string" ? r.description : null;
         const text = code ?? blurb ?? desc;
-        return <span className="text-muted-foreground">{text?.trim() ? text : "—"}</span>;
+        return <span className="font-medium">{text?.trim() ? text : "—"}</span>;
       },
+    },
+    {
+      key: "name",
+      header: "Name",
+      sortValue: (r) => r.name,
+      cell: (r) => <span className="text-muted-foreground">{r.name}</span>,
     },
     buildRowActionsColumn(ctx),
   ];

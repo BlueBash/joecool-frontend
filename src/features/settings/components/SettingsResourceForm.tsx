@@ -1,32 +1,39 @@
 import { useEffect, useId, useMemo } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Check, Loader2, X } from "lucide-react";
+import { Check, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { ApiError } from "@/api/_client";
+import { QueryState } from "@/components/states/QueryState";
 import {
   applyApiFieldErrors,
   buildSettingsFormSchema,
   firstFormErrorMessage,
   type SettingsFormValues,
 } from "@/lib/form";
-import type { FormMode, SettingsResourceEntry } from "../types";
+import type { SettingsFormEntry } from "../types";
 import { toFormPayload, toFormValues } from "../utils";
 import { FieldControl } from "./FieldControl";
 
-interface ResourceRowFormProps {
-  entry: SettingsResourceEntry;
-  mode: FormMode;
-  onDone: () => void;
+interface SettingsResourceFormProps {
+  entry: SettingsFormEntry;
+  title: string;
 }
 
-export function ResourceRowForm({ entry, mode, onDone }: ResourceRowFormProps) {
-  const { resource, fields, singular } = entry;
-  const isEdit = mode.kind === "edit";
+export function SettingsResourceForm({ entry, title }: SettingsResourceFormProps) {
+  const { resource, fields, singular, recordId } = entry;
   const formId = useId();
 
-  const detail = resource.hooks.useDetail(isEdit ? mode.id : null);
+  const list = resource.hooks.useList(
+    recordId ? undefined : { page: 1, pageSize: 1 },
+    { enabled: !recordId },
+  );
+
+  const resolvedId = recordId ?? list.data?.items[0]?.id ?? null;
+  const isEdit = resolvedId != null;
+
+  const detail = resource.hooks.useDetail(isEdit ? resolvedId : null);
   const create = resource.hooks.useCreate();
   const update = resource.hooks.useUpdate();
 
@@ -56,7 +63,8 @@ export function ResourceRowForm({ entry, mode, onDone }: ResourceRowFormProps) {
     reset(initialValues);
   }, [initialValues, reset]);
 
-  const busy = create.isPending || update.isPending || (isEdit && detail.isLoading) || isSubmitting;
+  const busy =
+    create.isPending || update.isPending || (isEdit && detail.isLoading) || isSubmitting;
 
   const onSubmit = handleSubmit(
     (values) => {
@@ -65,16 +73,15 @@ export function ResourceRowForm({ entry, mode, onDone }: ResourceRowFormProps) {
 
       const onSuccess = () => {
         toast.success(isEdit ? `${singular} updated` : `${singular} created`);
-        onDone();
       };
 
       const onError = (err: ApiError) => {
         if (applyApiFieldErrors(setError, err)) return;
-        if (!err.fieldErrors) return;
+        if (!err.fieldErrors) toast.error(err.message);
       };
 
-      if (isEdit) {
-        update.mutate({ id: mode.id, data: wire }, { onSuccess, onError });
+      if (isEdit && resolvedId) {
+        update.mutate({ id: resolvedId, data: wire }, { onSuccess, onError });
       } else {
         create.mutate(wire, { onSuccess, onError });
       }
@@ -84,39 +91,15 @@ export function ResourceRowForm({ entry, mode, onDone }: ResourceRowFormProps) {
     },
   );
 
-  return (
+  const formBody = (
     <form
       id={formId}
       onSubmit={onSubmit}
-      className="px-4 py-3"
+      className="max-w-2xl space-y-4 p-5"
       noValidate
-      aria-label={isEdit ? `Edit ${singular}` : `Add New ${singular}`}
+      aria-label={title}
     >
-      <div className="flex justify-between mb-2">
-        <h6 className="font-semibold">{isEdit ? `Edit ${singular}` : `Add New ${singular}`}</h6>
-        <div className="flex items-center justify-end gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="h-8 gap-1.5"
-            onClick={onDone}
-            disabled={busy}
-          >
-            <X className="h-3.5 w-3.5" aria-hidden />
-            Cancel
-          </Button>
-          <Button type="submit" size="sm" className="h-8 gap-1.5" disabled={busy} aria-busy={busy}>
-            {busy ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
-            ) : (
-              <Check className="h-3.5 w-3.5" aria-hidden />
-            )}
-            {isEdit ? "Save" : "Create"}
-          </Button>
-        </div>
-      </div>
-      <div className="grid md:grid-cols-3 grid-cols-1 gap-3 md:items-start">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         {fields.map((f) => (
           <Controller
             key={f.name}
@@ -135,6 +118,39 @@ export function ResourceRowForm({ entry, mode, onDone }: ResourceRowFormProps) {
           />
         ))}
       </div>
+
+      <div className="flex justify-end">
+        <Button type="submit" size="sm" className="h-8 gap-1.5" disabled={busy} aria-busy={busy}>
+          {busy ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+          ) : (
+            <Check className="h-3.5 w-3.5" aria-hidden />
+          )}
+          {isEdit ? "Save" : "Create"}
+        </Button>
+      </div>
     </form>
+  );
+
+  if (recordId) {
+    return (
+      <QueryState query={detail}>
+        {() => formBody}
+      </QueryState>
+    );
+  }
+
+  return (
+    <QueryState query={list} isEmpty={() => false}>
+      {() =>
+        isEdit ? (
+          <QueryState query={detail}>
+            {() => formBody}
+          </QueryState>
+        ) : (
+          formBody
+        )
+      }
+    </QueryState>
   );
 }

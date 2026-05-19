@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { QueryState } from "@/components/states/QueryState";
 import type { ApiError } from "@/api/_client";
-import { getSettingsResource } from "../registry";
 import { useResourceListingState } from "../hooks/useResourceListingState";
 import type { SettingsResourceEntry, BuildListingColumnsContext } from "../types";
 import { buildListingColumns } from "./listing-columns";
@@ -13,27 +12,16 @@ import { ResourceRowForm } from "./ResourceRowForm";
 import { PaginationBar } from "@/components/pagination-bar";
 
 interface SettingsResourceListingProps {
-  slug: string;
+  entry: SettingsResourceEntry;
   title: string;
 }
 
-export function SettingsResourceListing({ slug, title }: SettingsResourceListingProps) {
-  const entry = getSettingsResource(slug);
-
-  if (!entry) {
-    return (
-      <div className="m-4 rounded-md border border-dashed border-border p-6 text-sm text-muted-foreground">
-        This section is not yet wired to the API.
-      </div>
-    );
-  }
-
-  return <ResourceTable entry={entry} title={title} />;
+export function SettingsResourceListing({ entry }: SettingsResourceListingProps) {
+  return <ResourceTable entry={entry} />;
 }
 
 interface ResourceTableProps {
   entry: SettingsResourceEntry;
-  title: string;
 }
 
 function ResourceTable({ entry }: ResourceTableProps) {
@@ -65,11 +53,9 @@ function ResourceTable({ entry }: ResourceTableProps) {
     },
   };
 
-  // const columns = entry.buildListingColumns
-  //   ? entry.buildListingColumns(listingCtx)
-  //   : buildListingColumns(listingCtx);
-
-  const columns = buildListingColumns(listingCtx, entry.bodyKey);
+  const columns = entry.buildListingColumns
+    ? entry.buildListingColumns(listingCtx)
+    : buildListingColumns(listingCtx, entry.bodyKey);
 
   return (
     <div>

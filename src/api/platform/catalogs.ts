@@ -93,3 +93,33 @@ export const specialCustomers = createJsonApiResource<PlatformCatalogRow>(
   "/special_custs",
   "special_cust",
 );
+
+export const mapAccountants = createJsonApiResource<PlatformCatalogRow>(
+  ["platform", "map-accountants"],
+  "/map_accountants",
+  "map_accountant",
+);
+
+export const cashFlowSections = createJsonApiResource<PlatformCatalogRow>(
+  ["platform", "cash-flow-sections"],
+  "/cash_flow_sections",
+  "cash_flow_section",
+);
+
+export const profitLossSections = createJsonApiResource<PlatformCatalogRow>(
+  ["platform", "profit-loss-sections"],
+  "/profit_loss_sections",
+  "profit_loss_section",
+);
+
+export const venues = createJsonApiResource<PlatformCatalogRow>(
+  ["platform", "venues"],
+  "/venues",
+  "venue",
+);
+
+export const documents = createJsonApiResource<PlatformCatalogRow>(
+  ["platform", "documents"],
+  "/documents",
+  "document",
+);

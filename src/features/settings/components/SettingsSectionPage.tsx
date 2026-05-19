@@ -1,47 +1,48 @@
-import { Link, useRouterState } from "@tanstack/react-router";
-import { cn } from "@/lib/utils";
-import { findSettingsTrail, sectionTitles } from "@/lib/settings-nav";
-import { settingsPathToSlug, slugToSettingsPath } from "@/lib/config/settings-paths";
+import { useRouterState } from "@tanstack/react-router";
+import { findSettingsRouteGroup } from "@/lib/config/settings-route-groups";
+import { sectionTitles } from "@/lib/settings-nav";
+import { settingsPathToSlug } from "@/lib/config/settings-paths";
+import { getSettingsSection } from "../registry";
+import { SettingsResourceForm } from "./SettingsResourceForm";
 import { SettingsResourceListing } from "./SettingsResourceListing";
+import { SettingsSectionInnerNav } from "./SettingsSectionInnerNav";
+import { SettingsSectionPlaceholder } from "./SettingsSectionPlaceholder";
 
 export function SettingsSectionPage() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const section = settingsPathToSlug(pathname);
   const meta = sectionTitles[section] ?? { title: section, desc: "" };
-  const trail = findSettingsTrail(section);
-  const siblings = trail?.siblings ?? [];
+  const routeGroup = findSettingsRouteGroup(pathname);
+  const config = getSettingsSection(section);
+
+  const content = (() => {
+    if (!config) return <SettingsSectionPlaceholder />;
+
+    switch (config.view) {
+      case "listing":
+        return <SettingsResourceListing entry={config.entry} title={meta.title} />;
+      case "form":
+        return <SettingsResourceForm entry={config.entry} title={meta.title} />;
+      case "custom": {
+        const Custom = config.component;
+        return <Custom slug={section} title={meta.title} />;
+      }
+    }
+  })();
 
   return (
     <div>
       <div className="sticky top-12">
         <div className="border-b border-border bg-background">
-          {siblings.length > 1 && (
-            <nav
-              aria-label={`${meta.title} subsections`}
-              className="flex items-center gap-1 -mb-px overflow-x-auto"
-            >
-              {siblings.map((t) => {
-                const active = t.slug === section;
-                return (
-                  <Link
-                    key={t.slug}
-                    to={slugToSettingsPath(t.slug)}
-                    aria-current={active ? "page" : undefined}
-                    className={cn(
-                      "px-3 py-2 text-[13px] whitespace-nowrap border-b-2 -mb-px transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                      active
-                        ? "border-primary text-primary font-medium"
-                        : "border-transparent text-muted-foreground hover:text-foreground",
-                    )}
-                  >
-                    {t.label}
-                  </Link>
-                );
-              })}
-            </nav>
+          {routeGroup?.shouldShowInnerNav && (
+            <SettingsSectionInnerNav
+              routes={routeGroup.routes}
+              activeSlug={routeGroup.activeSlug}
+              ariaLabel={`${meta.title} subsections`}
+            />
           )}
         </div>
-        <SettingsResourceListing slug={section} title={meta.title} />
+        {content}
       </div>
     </div>
   );
