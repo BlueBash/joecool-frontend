@@ -136,6 +136,7 @@ export interface SidebarGroupProps {
   activeSection: string;
   activeGroupSlugs: Set<string>;
   hideSectionsInSidebar?: boolean;
+  collapsed?: boolean;
 }
 
 export interface StockSubgroupRowProps {

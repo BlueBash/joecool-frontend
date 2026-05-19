@@ -1,8 +1,9 @@
 import { Link, Outlet, useRouterState } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ChevronRight } from "lucide-react";
-import { useSettings } from "@/store";
+import { ChevronRight, PanelLeft, PanelLeftClose } from "lucide-react";
+import { useSettings, useUi } from "@/store";
 import { PageHeader } from "@/components/app-shell";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
   settingsTree,
@@ -22,6 +23,8 @@ import type {
 } from "./types";
 
 export function SettingsPage() {
+  const settingsSidebarCollapsed = useUi((s) => s.settingsSidebarCollapsed);
+  const toggleSettingsSidebar = useUi((s) => s.toggleSettingsSidebar);
   const path = useRouterState({ select: (s) => s.location.pathname });
   const activeSection = settingsPathToSlug(path);
   const trail = findSettingsTrail(activeSection);
@@ -78,24 +81,67 @@ export function SettingsPage() {
       <PageHeader
         title="Settings"
         description="Manage lookup tables and reference data used across the app."
+        actions={
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            onClick={toggleSettingsSidebar}
+            aria-label="Toggle settings sidebar"
+          >
+            {settingsSidebarCollapsed ? (
+              <PanelLeft className="h-4 w-4" />
+            ) : (
+              <PanelLeftClose className="h-4 w-4" />
+            )}
+          </Button>
+        }
       />
-      <div className="flex min-h-[calc(100vh-7rem)]">
-        <nav className="w-64 shrink-0 border-r border-border bg-muted/20 pt-3 pb-5 px-2 overflow-y-auto scrollbar-thin h-screen">
-          <ul className="space-y-0.5">
-            {settingsTree.map((group) => (
-              <SidebarGroup
-                key={group.slug}
-                group={group}
-                depth={0}
-                parentKey={SETTINGS_SIDEBAR_ROOT_PARENT_KEY}
-                expandedByParent={expandedByParent}
-                onToggleGroup={toggleSidebarGroup}
-                activeSection={activeSection}
-                activeGroupSlugs={activeGroupSlugs}
-                hideSectionsInSidebar={group.slug === SETTINGS_STOCK_SIDEBAR_ROOT_SLUG}
-              />
-            ))}
-          </ul>
+      <div className="flex h-[calc(100vh-6rem)] min-h-0">
+        <nav
+          className={cn(
+            "sticky top-0 self-start shrink-0 border-r border-border bg-muted/20 flex flex-col transition-[width] duration-200 overflow-hidden h-full",
+            settingsSidebarCollapsed ? "w-14" : "w-46",
+          )}
+        >
+          <div
+            className={cn(
+              "flex-1 min-h-0 overflow-y-auto scrollbar-thin pt-3",
+              settingsSidebarCollapsed ? "px-1 pb-2" : "px-2 pb-5",
+            )}
+          >
+            <ul className="space-y-0.5">
+              {settingsTree.map((group) => (
+                <SidebarGroup
+                  key={group.slug}
+                  group={group}
+                  depth={0}
+                  parentKey={SETTINGS_SIDEBAR_ROOT_PARENT_KEY}
+                  expandedByParent={expandedByParent}
+                  onToggleGroup={toggleSidebarGroup}
+                  activeSection={activeSection}
+                  activeGroupSlugs={activeGroupSlugs}
+                  hideSectionsInSidebar={group.slug === SETTINGS_STOCK_SIDEBAR_ROOT_SLUG}
+                  collapsed={settingsSidebarCollapsed}
+                />
+              ))}
+            </ul>
+          </div>
+          <div className="shrink-0 p-2 border-t border-border">
+            <button
+              type="button"
+              onClick={toggleSettingsSidebar}
+              className="w-full flex items-center justify-center h-8 rounded-md hover:bg-accent text-muted-foreground"
+              aria-label="Toggle settings sidebar"
+            >
+              {settingsSidebarCollapsed ? (
+                <PanelLeft className="h-4 w-4" />
+              ) : (
+                <PanelLeftClose className="h-4 w-4" />
+              )}
+            </button>
+          </div>
         </nav>
         <div className="flex-1 min-w-0">
           <Outlet />
@@ -114,6 +160,7 @@ function SidebarGroup({
   activeSection,
   activeGroupSlugs,
   hideSectionsInSidebar,
+  collapsed,
 }: SidebarGroupProps) {
   const isOnPath = activeGroupSlugs.has(group.slug);
   const open = expandedByParent[parentKey] === group.slug;
@@ -133,6 +180,37 @@ function SidebarGroup({
 
   const Icon = group.icon;
   const indent = depth === 0 ? "px-2.5" : depth === 1 ? "pl-6 pr-2.5" : "pl-9 pr-2.5";
+
+  if (collapsed && depth > 0) return null;
+
+  if (collapsed && depth === 0) {
+    const first = firstSection(group);
+    const to = first ? slugToSettingsPath(first.slug) : undefined;
+    const iconClass = cn(
+      "flex items-center justify-center h-8 w-full rounded-md transition-colors",
+      isOnPath
+        ? "bg-primary/10 text-primary"
+        : "text-foreground/70 hover:bg-accent hover:text-foreground",
+    );
+    const icon = Icon ? (
+      <Icon className="h-4 w-4 shrink-0" />
+    ) : (
+      <span className="text-xs font-semibold">{group.label.charAt(0)}</span>
+    );
+    return (
+      <li>
+        {to ? (
+          <Link to={to} className={iconClass} title={group.label}>
+            {icon}
+          </Link>
+        ) : (
+          <button type="button" className={iconClass} title={group.label} disabled>
+            {icon}
+          </button>
+        )}
+      </li>
+    );
+  }
 
   const stockRoot =
     hideSectionsInSidebar && group.slug === SETTINGS_STOCK_SIDEBAR_ROOT_SLUG && depth === 0;
@@ -173,6 +251,7 @@ function SidebarGroup({
                 activeSection={activeSection}
                 activeGroupSlugs={activeGroupSlugs}
                 hideSectionsInSidebar
+                collapsed={collapsed}
               />
             ))}
           </ul>
@@ -232,6 +311,7 @@ function SidebarGroup({
                 activeSection={activeSection}
                 activeGroupSlugs={activeGroupSlugs}
                 hideSectionsInSidebar
+                collapsed={collapsed}
               />
             ))}
           </ul>
@@ -292,6 +372,7 @@ function SidebarGroup({
               onToggleGroup={onToggleGroup}
               activeSection={activeSection}
               activeGroupSlugs={activeGroupSlugs}
+              collapsed={collapsed}
             />
           ))}
         </ul>

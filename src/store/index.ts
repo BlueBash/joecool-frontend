@@ -167,10 +167,12 @@ interface UiState {
   theme: "light" | "dark";
   density: "compact" | "cozy";
   sidebarCollapsed: boolean;
+  settingsSidebarCollapsed: boolean;
   toggleTheme: () => void;
   setTheme: (t: "light" | "dark") => void;
   setDensity: (d: "compact" | "cozy") => void;
   toggleSidebar: () => void;
+  toggleSettingsSidebar: () => void;
 }
 export const useUi = create<UiState>()(
   persist(
@@ -178,11 +180,22 @@ export const useUi = create<UiState>()(
       theme: "light",
       density: "compact",
       sidebarCollapsed: false,
+      settingsSidebarCollapsed: false,
       toggleTheme: () => set((s) => ({ theme: s.theme === "light" ? "dark" : "light" })),
       setTheme: (t) => set({ theme: t }),
       setDensity: (d) => set({ density: d }),
       toggleSidebar: () => set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),
+      toggleSettingsSidebar: () =>
+        set((s) => ({ settingsSidebarCollapsed: !s.settingsSidebarCollapsed })),
     }),
-    { name: "joecool-ui" },
+    {
+      name: "joecool-ui",
+      partialize: (state) => ({
+        theme: state.theme,
+        density: state.density,
+        sidebarCollapsed: state.sidebarCollapsed,
+        settingsSidebarCollapsed: state.settingsSidebarCollapsed,
+      }),
+    },
   ),
 );

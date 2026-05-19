@@ -90,7 +90,7 @@ export function AppShell({ children }: AppShellProps) {
       <aside
         className={cn(
           "shrink-0 border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-all duration-200 hidden md:flex flex-col",
-          sidebarCollapsed ? "w-14" : "w-56",
+          sidebarCollapsed ? "w-14" : "w-46",
         )}
       >
         <div className={cn("flex h-12 items-center gap-2 px-3 border-b border-sidebar-border", sidebarCollapsed && "justify-center px-0")}>
