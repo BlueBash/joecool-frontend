@@ -81,7 +81,7 @@ function ResourceTable({ slug, entry }: ResourceTableProps) {
 
   const columns = entry.buildListingColumns
     ? entry.buildListingColumns(listingCtx)
-    : buildListingColumns(listingCtx, entry.bodyKey);
+    : buildListingColumns(listingCtx);
 
   return (
     <div>

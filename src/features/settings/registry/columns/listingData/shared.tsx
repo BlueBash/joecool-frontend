@@ -1,5 +1,8 @@
 import { readFieldValue } from "../../../utils";
-import { buildListingColumns, buildRowActionsColumn } from "../../../components/listing-columns";
+import {
+  buildListingPrefixColumns,
+  buildRowActionsColumn,
+} from "../../../components/listing-columns";
 import type { BuildListingColumnsFn, SettingItemLike } from "../../../types";
 import { ReactNode } from "react";
 
@@ -52,7 +55,7 @@ export function createBuildSettingListingColumns(
   return (ctx) => {
     const key = ctx.entry.listingKey ?? ctx.entry.bodyKey;
     return [
-      ...buildListingColumns(ctx, ctx.entry.bodyKey).slice(0, -1),
+      ...buildListingPrefixColumns(ctx),
       ...(listingData[key] ?? []),
       buildRowActionsColumn(ctx),
     ];

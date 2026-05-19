@@ -144,7 +144,7 @@ export function DataTable<T extends { id: string }>({
       <table className={cn("w-full text-[13px] border-separate border-spacing-0", dens)}>
         <thead className="bg-muted/50 text-muted-foreground sticky top-0 z-10">
           <tr>
-            {expandedRow && <th className="w-7 border-b border-border" />}
+            {/* {expandedRow && <th className="w-7 border-b border-border" />} */}
             {onSelectChange && (
               <th className="w-9 border-b border-border">
                 <div className="flex justify-center">
@@ -199,7 +199,7 @@ export function DataTable<T extends { id: string }>({
               </td>
             </tr>
           )}
-          {sortedRows.map((tableRow) => {
+          {sortedRows.map((tableRow, index) => {
             const row = tableRow.original;
             const isExpanded = expanded.has(row.id);
             const isSelected = selected?.has(row.id);
@@ -216,7 +216,7 @@ export function DataTable<T extends { id: string }>({
                     onRowClick?.(row);
                   }}
                 >
-                  {expandedRow && (
+                  {/* {expandedRow && (
                     <td className="border-b border-border align-middle">
                       <button
                         onClick={(e) => {
@@ -233,7 +233,7 @@ export function DataTable<T extends { id: string }>({
                         )}
                       </button>
                     </td>
-                  )}
+                  )} */}
                   {onSelectChange && (
                     <td className="border-b border-border align-middle">
                       <div className="flex justify-center" onClick={(e) => e.stopPropagation()}>
