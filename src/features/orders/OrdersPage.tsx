@@ -7,7 +7,9 @@ import { DataTable, Toolbar, TableSearch, type Column } from "@/components/data-
 import { Pill } from "@/components/pill";
 import { Button } from "@/components/ui/button";
 import { PaginationBar } from "@/components/pagination-bar";
+import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog";
 import { RowActions, EditLink, DeleteButton } from "@/components/row-actions";
+import { useDeleteConfirm } from "@/hooks/use-delete-confirm";
 import { usePaginated } from "@/hooks/use-paginated";
 import { toast } from "sonner";
 import type { Order } from "@/lib/types";
@@ -29,6 +31,13 @@ function OrdersListing() {
     !q || [o.code, o.addrName, o.addrCode, o.ourRef ?? "", o.logRef].some(v => v.toLowerCase().includes(q.toLowerCase()))
   ), [items, q]);
   const { page, setPage, pageSize, setPageSize, paged, total } = usePaginated(filtered, 10);
+
+  const deleteConfirm = useDeleteConfirm<{ id: string }>({
+    onConfirm: async ({ id }) => {
+      remove(id);
+      toast.success("Removed");
+    },
+  });
 
   const columns = [
     { key: "code", header: "Code", width: "100px", sortValue: r => r.code, cell: r => <CopyableCode value={r.code} /> },
@@ -52,7 +61,16 @@ function OrdersListing() {
       cell: r => (
         <RowActions>
           <EditLink to="/order/$id" params={{ id: r.id }} title="Edit order" />
-          <DeleteButton onClick={() => { remove(r.id); toast.success("Removed"); }} />
+          <DeleteButton
+            onClick={() =>
+              deleteConfirm.requestDelete({
+                title: "Delete order",
+                entityName: r.code,
+                entityType: "order",
+                meta: { id: r.id },
+              })
+            }
+          />
         </RowActions>
       ) },
   ] satisfies Column<Order>[];
@@ -74,6 +92,7 @@ function OrdersListing() {
 
   return (
     <div>
+      <DeleteConfirmDialog state={deleteConfirm} />
       <PageHeader
         title="Orders"
         description="Customer & supplier orders"

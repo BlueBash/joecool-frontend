@@ -20,7 +20,13 @@ export function SettingsSectionPage() {
 
     switch (config.view) {
       case "listing":
-        return <SettingsResourceListing entry={config.entry} title={meta.title} />;
+        return (
+          <SettingsResourceListing
+            slug={section}
+            entry={config.entry}
+            title={meta.title}
+          />
+        );
       case "form":
         return <SettingsResourceForm entry={config.entry} title={meta.title} />;
       case "custom": {

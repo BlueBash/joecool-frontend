@@ -10,6 +10,8 @@ import { Input } from "@/components/ui/input";
 import { Pill } from "@/components/pill";
 import { CopyableCode } from "@/components/app-shell";
 import { InlineNumber, InlineText } from "@/components/inline-edit";
+import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog";
+import { useDeleteConfirm } from "@/hooks/use-delete-confirm";
 import { toast } from "sonner";
 import type { Transaction, TxnLine, TxnAllocation, TxnKind, TranType, TxnLineUpdate, TxnAllocationUpdate } from "@/lib/types";
 import { firstFormErrorMessage, useEntityForm } from "@/lib/form";
@@ -34,6 +36,14 @@ export function TransactionEditPage() {
 
   const { watch, setValue, handleSubmit, isDirty, isSubmitting } = form;
   const draft = watch();
+
+  const deleteConfirm = useDeleteConfirm<{ id: string }>({
+    onConfirm: async ({ id }) => {
+      remove(id);
+      toast.success("Removed");
+      nav({ to: "/transactions" });
+    },
+  });
 
   if (!item || !draft?.id) {
     return (
@@ -82,10 +92,18 @@ export function TransactionEditPage() {
       toast.error(firstFormErrorMessage(errors) ?? "Please fix the highlighted fields");
     },
   );
-  const onDelete = () => { remove(item.id); toast.success("Removed"); nav({ to: "/transactions" }); };
+  const onDelete = () => {
+    deleteConfirm.requestDelete({
+      title: "Delete transaction",
+      entityName: draft.refMain,
+      entityType: "transaction",
+      meta: { id: item.id },
+    });
+  };
 
   return (
     <FormProvider {...form}>
+    <DeleteConfirmDialog state={deleteConfirm} />
     <EditScreen
       backTo="/transactions"
       backLabel="Back to Transactions"

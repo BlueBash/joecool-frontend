@@ -16,6 +16,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Pill } from "@/components/pill";
 import { CopyableCode } from "@/components/app-shell";
+import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog";
+import { useDeleteConfirm } from "@/hooks/use-delete-confirm";
 import { toast } from "sonner";
 import type { StockItem, StockMaterialRowUpdate } from "@/lib/types";
 import { applyApiFieldErrors, firstFormErrorMessage, useEntityForm } from "@/lib/form";
@@ -161,6 +163,12 @@ export function StockEditPage() {
     onError: (err: ApiError) => toast.error(err.message),
   });
 
+  const deleteConfirm = useDeleteConfirm<{ id: string }>({
+    onConfirm: async ({ id }) => {
+      await deleteStock.mutateAsync({ id });
+    },
+  });
+
   const isSaving = isSubmitting || createStock.isPending || updateStock.isPending;
 
   if (!isNew && detailQuery.isPending) {
@@ -230,7 +238,12 @@ export function StockEditPage() {
       nav({ to: "/stocks" });
       return;
     }
-    deleteStock.mutate({ id: draft.id });
+    deleteConfirm.requestDelete({
+      title: "Delete stock",
+      entityName: draft.code,
+      entityType: "stock item",
+      meta: { id: draft.id },
+    });
   };
 
   const onGenerateBarcodes = async () => {
@@ -263,6 +276,7 @@ export function StockEditPage() {
 
   return (
     <FormProvider {...form}>
+    <DeleteConfirmDialog state={deleteConfirm} />
     <EditScreen
       backTo="/stocks"
       backLabel="Back to Stock"
@@ -304,6 +318,7 @@ export function StockEditPage() {
                 size="sm"
                 className="h-8 gap-1.5 text-destructive hover:text-destructive"
                 onClick={onDelete}
+                disabled={deleteStock.isPending || deleteConfirm.isPending || isSaving}
               >
                 <Trash2 className="h-3.5 w-3.5" /> Delete
               </Button>

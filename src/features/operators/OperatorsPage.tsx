@@ -7,7 +7,9 @@ import { DataTable, Toolbar, TableSearch, type Column } from "@/components/data-
 import { Pill } from "@/components/pill";
 import { Button } from "@/components/ui/button";
 import { PaginationBar } from "@/components/pagination-bar";
+import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog";
 import { RowActions, EditLink, DeleteButton } from "@/components/row-actions";
+import { useDeleteConfirm } from "@/hooks/use-delete-confirm";
 import { toast } from "sonner";
 import type { Operator } from "@/lib/types";
 import { useOperatorDelete, useOperatorDirectory } from "./hooks";
@@ -25,10 +27,24 @@ function OperatorsListing() {
   const directory = useOperatorDirectory({ page, pageSize, search: q });
   const removeOperator = useOperatorDelete();
 
+  const deleteConfirm = useDeleteConfirm<{ id: string }>({
+    onConfirm: async ({ id }) => {
+      try {
+        await removeOperator.mutateAsync({ id });
+        toast.success("Operator removed");
+      } catch (err) {
+        toast.error((err as ApiError)?.message ?? "Failed to delete operator");
+        throw err;
+      }
+    },
+  });
+
   const onDelete = (row: Operator) => {
-    removeOperator.mutate({ id: row.id }, {
-      onSuccess: () => toast.success("Operator removed"),
-      onError: (err: ApiError) => toast.error(err.message),
+    deleteConfirm.requestDelete({
+      title: "Delete operator",
+      entityName: row.name || row.code,
+      entityType: "operator",
+      meta: { id: row.id },
     });
   };
 
@@ -82,6 +98,7 @@ function OperatorsListing() {
 
   return (
     <div>
+      <DeleteConfirmDialog state={deleteConfirm} />
       <PageHeader
         title="Operators"
         description="User accounts and permissions"

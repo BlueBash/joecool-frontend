@@ -8,7 +8,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { PaginationBar } from "@/components/pagination-bar";
+import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog";
 import { RowActions, DeleteButton } from "@/components/row-actions";
+import { useDeleteConfirm } from "@/hooks/use-delete-confirm";
 import { usePaginated } from "@/hooks/use-paginated";
 import { toast } from "sonner";
 import type { TimeEntry } from "@/lib/types";
@@ -62,6 +64,13 @@ export function TimeKeepingPage() {
   , [items, q]);
   const { page, setPage, pageSize, setPageSize, paged, total } = usePaginated(filtered, 10);
 
+  const deleteConfirm = useDeleteConfirm<{ id: string }>({
+    onConfirm: async ({ id }) => {
+      remove(id);
+      toast.success("Removed");
+    },
+  });
+
   const flagSummary = (r: TimeEntry) => {
     const f: string[] = [];
     if (r.holidayFull) f.push("Hol"); else if (r.holidayHalf) f.push("½Hol");
@@ -93,13 +102,23 @@ export function TimeKeepingPage() {
         >
           <Pencil className="h-3.5 w-3.5" />
         </button>
-        <DeleteButton onClick={() => { remove(r.id); toast.success("Removed"); }} />
+        <DeleteButton
+          onClick={() =>
+            deleteConfirm.requestDelete({
+              title: "Delete time entry",
+              entityName: `${r.operatorName} · ${r.date}`,
+              entityType: "time entry",
+              meta: { id: r.id },
+            })
+          }
+        />
       </RowActions>
     ) },
   ] satisfies Column<TimeEntry>[];
 
   return (
     <div>
+      <DeleteConfirmDialog state={deleteConfirm} />
       <PageHeader title="Time Keeping" description="Track operator hours" />
 
       <Toolbar>

@@ -1,4 +1,4 @@
-import { Link, Outlet, useRouterState, Navigate } from "@tanstack/react-router";
+import { Link, Outlet, useRouterState } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ChevronRight } from "lucide-react";
 import { useSettings } from "@/store";
@@ -12,11 +12,7 @@ import {
   SETTINGS_STOCK_SIDEBAR_ROOT_SLUG,
   type SettingsGroup,
 } from "@/lib/settings-nav";
-import {
-  SETTINGS_DEFAULT_PATH,
-  settingsPathToSlug,
-  slugToSettingsPath,
-} from "@/lib/config/settings-paths";
+import { settingsPathToSlug, slugToSettingsPath } from "@/lib/config/settings-paths";
 import { SETTINGS_SIDEBAR_ROOT_PARENT_KEY } from "./constants";
 import type {
   SettingsSidebarExpandedByParent,
@@ -27,8 +23,7 @@ import type {
 
 export function SettingsPage() {
   const path = useRouterState({ select: (s) => s.location.pathname });
-  const isSettingsRoot = path === "/settings" || path === "/settings/";
-  const activeSection = settingsPathToSlug(isSettingsRoot ? SETTINGS_DEFAULT_PATH : path);
+  const activeSection = settingsPathToSlug(path);
   const trail = findSettingsTrail(activeSection);
   const activeGroupSlugs = new Set(trail?.groups.map((g) => g.slug) ?? []);
 
@@ -77,10 +72,6 @@ export function SettingsPage() {
       return next;
     });
   }, []);
-
-  if (isSettingsRoot) {
-    return <Navigate to={SETTINGS_DEFAULT_PATH as never} replace />;
-  }
 
   return (
     <div>

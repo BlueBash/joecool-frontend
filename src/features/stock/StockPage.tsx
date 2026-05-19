@@ -12,7 +12,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ColumnPicker, type ColumnDef } from "@/components/column-picker";
 import { PaginationBar } from "@/components/pagination-bar";
+import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog";
 import { RowActions, EditLink, DeleteButton } from "@/components/row-actions";
+import { useDeleteConfirm } from "@/hooks/use-delete-confirm";
 import { toast } from "sonner";
 import type { StockItem } from "@/lib/types";
 import { firstFormErrorMessage } from "@/lib/form";
@@ -65,6 +67,12 @@ function StockListing() {
   const deleteStock = stocks.hooks.useDelete({
     onSuccess: () => toast.success("Stock removed"),
     onError: (err: ApiError) => toast.error(err.message),
+  });
+
+  const deleteConfirm = useDeleteConfirm<{ id: string }>({
+    onConfirm: async ({ id }) => {
+      await deleteStock.mutateAsync({ id });
+    },
   });
 
   const attentionCount = directory.items.filter((i) => i.status !== "active").length;
@@ -167,7 +175,16 @@ function StockListing() {
       cell: (r: StockItem) => (
         <RowActions>
           <EditLink to="/stock/$id" params={{ id: r.id }} title="Edit stock" />
-          <DeleteButton onClick={() => deleteStock.mutate({ id: r.id })} />
+          <DeleteButton
+            onClick={() =>
+              deleteConfirm.requestDelete({
+                title: "Delete stock",
+                entityName: r.code,
+                entityType: "stock item",
+                meta: { id: r.id },
+              })
+            }
+          />
         </RowActions>
       ),
     },
@@ -177,6 +194,7 @@ function StockListing() {
 
   return (
     <div>
+      <DeleteConfirmDialog state={deleteConfirm} />
       <PageHeader
         title="Stock"
         description={`${attentionCount} need attention`}

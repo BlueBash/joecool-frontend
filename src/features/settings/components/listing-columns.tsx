@@ -28,7 +28,7 @@ export function buildRowActionsColumn(
           >
             <Pencil className="h-3.5 w-3.5" aria-hidden />
           </button>
-          <DeleteButton onClick={() => onDelete(r.id)} />
+          <DeleteButton onClick={() => onDelete(r)} />
         </RowActions>
       );
     },

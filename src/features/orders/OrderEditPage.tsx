@@ -11,6 +11,8 @@ import { Input } from "@/components/ui/input";
 import { Pill } from "@/components/pill";
 import { CopyableCode } from "@/components/app-shell";
 import { InlineNumber } from "@/components/inline-edit";
+import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog";
+import { useDeleteConfirm } from "@/hooks/use-delete-confirm";
 import { toast } from "sonner";
 import type { Order, OrderStatus, OrderKind, OrderLineUpdate } from "@/lib/types";
 import { firstFormErrorMessage, useEntityForm } from "@/lib/form";
@@ -47,6 +49,14 @@ export function OrderEditPage() {
   const { watch, setValue, handleSubmit, isDirty, isSubmitting } = form;
   const draft = watch();
 
+  const deleteConfirm = useDeleteConfirm<{ id: string }>({
+    onConfirm: async ({ id }) => {
+      remove(id);
+      toast.success("Removed");
+      nav({ to: "/orders" });
+    },
+  });
+
   if (!item || !draft?.id) {
     return (
       <EditScreen backTo="/orders" title="Order not found">
@@ -81,10 +91,18 @@ export function OrderEditPage() {
       toast.error(firstFormErrorMessage(errors) ?? "Please fix the highlighted fields");
     },
   );
-  const onDelete = () => { remove(item.id); toast.success("Removed"); nav({ to: "/orders" }); };
+  const onDelete = () => {
+    deleteConfirm.requestDelete({
+      title: "Delete order",
+      entityName: draft.code,
+      entityType: "order",
+      meta: { id: item.id },
+    });
+  };
 
   return (
     <FormProvider {...form}>
+    <DeleteConfirmDialog state={deleteConfirm} />
     <EditScreen
       backTo="/orders"
       backLabel="Back to Orders"

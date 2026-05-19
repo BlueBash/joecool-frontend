@@ -19,6 +19,8 @@ import { Input } from "@/components/ui/input";
 import { Pill } from "@/components/pill";
 import { CopyableCode } from "@/components/app-shell";
 import { applyApiFieldErrors, firstFormErrorMessage, useEntityForm } from "@/lib/form";
+import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog";
+import { useDeleteConfirm } from "@/hooks/use-delete-confirm";
 import { toast } from "sonner";
 import {
   createOperatorFormSchema,
@@ -101,6 +103,19 @@ export function OperatorEditPage() {
   const deleteOperator = useOperatorDelete();
   const forgotPassword = useForgotPasswordMutation();
 
+  const deleteConfirm = useDeleteConfirm<{ id: string }>({
+    onConfirm: async ({ id }) => {
+      try {
+        await deleteOperator.mutateAsync({ id });
+        toast.success("Removed");
+        nav({ to: "/operators" });
+      } catch (err) {
+        toast.error((err as ApiError)?.message ?? "Failed to delete operator");
+        throw err;
+      }
+    },
+  });
+
   const roleOptions = useMemo(() => {
     const fromApi = (rolesQuery.data?.items ?? []).map((r) => String(r.name ?? r.id));
     return fromApi.length > 0 ? fromApi : [...UI_ROLES];
@@ -178,16 +193,12 @@ export function OperatorEditPage() {
       nav({ to: "/operators" });
       return;
     }
-    deleteOperator.mutate(
-      { id },
-      {
-        onSuccess: () => {
-          toast.success("Removed");
-          nav({ to: "/operators" });
-        },
-        onError: (err: ApiError) => toast.error(err.message),
-      },
-    );
+    deleteConfirm.requestDelete({
+      title: "Delete operator",
+      entityName: draft.name || draft.code,
+      entityType: "operator",
+      meta: { id },
+    });
   };
 
   const sendReset = () => {
@@ -228,6 +239,7 @@ export function OperatorEditPage() {
 
   return (
     <FormProvider {...form}>
+      <DeleteConfirmDialog state={deleteConfirm} />
       <EditScreen
         backTo="/operators"
         backLabel="Back to Operators"
@@ -248,7 +260,7 @@ export function OperatorEditPage() {
                 size="sm"
                 className="h-8 gap-1.5 text-destructive hover:text-destructive"
                 onClick={onDelete}
-                disabled={deleteOperator.isPending || isSaving}
+                disabled={deleteOperator.isPending || deleteConfirm.isPending || isSaving}
               >
                 <Trash2 className="h-3.5 w-3.5" /> Delete
               </Button>

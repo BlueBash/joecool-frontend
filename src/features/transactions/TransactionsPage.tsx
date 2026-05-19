@@ -7,7 +7,9 @@ import { DataTable, Toolbar, TableSearch, type Column } from "@/components/data-
 import { Pill } from "@/components/pill";
 import { Button } from "@/components/ui/button";
 import { PaginationBar } from "@/components/pagination-bar";
+import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog";
 import { RowActions, EditLink, DeleteButton } from "@/components/row-actions";
+import { useDeleteConfirm } from "@/hooks/use-delete-confirm";
 import { usePaginated } from "@/hooks/use-paginated";
 import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator,
@@ -48,6 +50,13 @@ function TxnListing() {
   );
   const { page, setPage, pageSize, setPageSize, paged, total } = usePaginated(filtered, 10);
 
+  const deleteConfirm = useDeleteConfirm<{ id: string }>({
+    onConfirm: async ({ id }) => {
+      remove(id);
+      toast.success("Deleted");
+    },
+  });
+
   const columns = [
     {
       key: "code", header: "Code", width: "150px", sortValue: (r) => r.refMain,
@@ -87,7 +96,16 @@ function TxnListing() {
       cell: (r) => (
         <RowActions>
           <EditLink to="/transactions/$id" params={{ id: r.id }} title="Edit transaction" />
-          <DeleteButton onClick={() => { remove(r.id); toast.success("Deleted"); }} />
+          <DeleteButton
+            onClick={() =>
+              deleteConfirm.requestDelete({
+                title: "Delete transaction",
+                entityName: r.refMain,
+                entityType: "transaction",
+                meta: { id: r.id },
+              })
+            }
+          />
         </RowActions>
       ),
     },
@@ -95,6 +113,7 @@ function TxnListing() {
 
   return (
     <div>
+      <DeleteConfirmDialog state={deleteConfirm} />
       <PageHeader
         title="Transactions"
         description="Invoices, payments and credits"

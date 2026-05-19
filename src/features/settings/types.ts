@@ -2,6 +2,7 @@ import type { ComponentType } from "react";
 import type { Resource } from "@/api/_client";
 import type { Column } from "@/components/data-table";
 import type { SettingsGroup } from "@/lib/settings-nav";
+import type { SettingsListFilterConfig } from "./filters";
 
 // ---------------------------------------------------------------------------
 // Resource registry — typed surface every settings catalog implements.
@@ -55,7 +56,7 @@ export interface BuildListingColumnsContext {
   entry: SettingsResourceEntry;
   editing: EditingState;
   onEdit: (id: string) => void;
-  onDelete: (id: string) => void;
+  onDelete: (row: SettingItemLike) => void;
 }
 
 /** Override per slug when the default Name / Code / Actions table is not enough. */
@@ -94,6 +95,11 @@ export interface SettingsResourceEntry extends SettingsEntryBase {
    * default listing (name, code/details summary, actions) is used.
    */
   buildListingColumns?: BuildListingColumnsFn;
+  /**
+   * Optional list filter config for this slug. When omitted, filters are
+   * resolved from `getSettingsListFilters` (body-key defaults and presets).
+   */
+  listFilters?: SettingsListFilterConfig;
 }
 
 /** Form-only section (no DataTable). */
