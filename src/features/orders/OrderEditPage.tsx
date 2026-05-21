@@ -3,7 +3,7 @@ import { useState } from "react";
 import { FormProvider } from "react-hook-form";
 import { Trash2, Save, Plus, Printer, Mail } from "lucide-react";
 import { useOrders, useStocks } from "@/store";
-import { EditScreen, EditCard, StickyFormFooter } from "@/components/edit-screen";
+import { EditScreen, EditCard } from "@/components/edit-screen";
 import { Field, FormGrid } from "@/components/form-primitives";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -433,11 +433,6 @@ export function OrderEditPage() {
           </EditCard>
         </TabsContent>
       </Tabs>
-
-      <StickyFormFooter>
-        <Button variant="outline" size="sm" onClick={() => nav({ to: "/orders" })}>Cancel</Button>
-        <Button size="sm" className="gap-1.5" onClick={save} disabled={isSubmitting || !isDirty}><Save className="h-3.5 w-3.5" /> Update</Button>
-      </StickyFormFooter>
     </EditScreen>
     </FormProvider>
   );

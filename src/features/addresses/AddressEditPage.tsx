@@ -4,7 +4,7 @@ import { FormProvider } from "react-hook-form";
 import { Loader2, Save } from "lucide-react";
 import { addresses } from "@/api/address";
 import type { ApiError } from "@/api/_client";
-import { EditScreen, EditCard, StickyFormFooter } from "@/components/edit-screen";
+import { EditScreen, EditCard } from "@/components/edit-screen";
 import { ReferenceField } from "@/components/reference-field";
 import { Field, FormGrid } from "@/components/form-primitives";
 import { ReferenceKlass } from "@/lib/reference-registry";
@@ -428,14 +428,6 @@ export function AddressEditPage() {
           </div>
         </TabsContent>
       </Tabs>
-
-      <StickyFormFooter>
-        <Button variant="outline" size="sm" onClick={() => nav({ to: "/addresses" })} disabled={isSaving}>Cancel</Button>
-        <Button size="sm" className="gap-1.5" onClick={save} disabled={isSaving || (!isNew && !isDirty)}>
-          {isSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
-          Save Address
-        </Button>
-      </StickyFormFooter>
     </EditScreen>
     </FormProvider>
   );

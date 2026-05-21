@@ -15,6 +15,15 @@ export interface GenerateNextCodeParams {
 export interface GenerateNextCodeResult {
   code?: string;
   next_code?: string;
+  stock_code?: string;
+  prefix?: string;
+  length?: number;
+  attributes?: {
+    stock_code?: string;
+    prefix?: string;
+    length?: number;
+    [key: string]: unknown;
+  };
   [key: string]: unknown;
 }
 

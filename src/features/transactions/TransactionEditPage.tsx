@@ -3,7 +3,7 @@ import { useState } from "react";
 import { FormProvider } from "react-hook-form";
 import { Trash2, Save, Plus } from "lucide-react";
 import { useTxns } from "@/store";
-import { EditScreen, EditCard, StickyFormFooter } from "@/components/edit-screen";
+import { EditScreen, EditCard } from "@/components/edit-screen";
 import { Field, FormGrid } from "@/components/form-primitives";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -280,11 +280,6 @@ export function TransactionEditPage() {
           onChange={e => set("comment", e.target.value)}
         />
       </EditCard>
-
-      <StickyFormFooter>
-        <Button variant="outline" size="sm" onClick={() => nav({ to: "/transactions" })}>Cancel</Button>
-        <Button size="sm" className="gap-1.5" onClick={save} disabled={isSubmitting || !isDirty}><Save className="h-3.5 w-3.5" /> Save Transaction</Button>
-      </StickyFormFooter>
     </EditScreen>
     </FormProvider>
   );

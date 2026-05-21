@@ -1,9 +1,23 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useEffect } from "react";
 import {
-  LayoutDashboard, Boxes, MapPin, ShoppingCart, ArrowLeftRight,
-  BarChart3, Users, Clock, Settings, Search, Sun, Moon,
-  PanelLeftClose, PanelLeft, LogIn, Copy, LogOut,
+  LayoutDashboard,
+  Boxes,
+  MapPin,
+  ShoppingCart,
+  ArrowLeftRight,
+  BarChart3,
+  Users,
+  Clock,
+  Settings,
+  Search,
+  Sun,
+  Moon,
+  PanelLeftClose,
+  PanelLeft,
+  LogIn,
+  Copy,
+  LogOut,
 } from "lucide-react";
 import { useUi, useAuth } from "@/store";
 import { cn } from "@/lib/utils";
@@ -86,22 +100,31 @@ export function AppShell({ children }: AppShellProps) {
   }, [setTheme]);
 
   return (
-    <div className="flex h-screen w-full overflow-hidden bg-background text-foreground">
+    <main className="flex h-screen w-full overflow-hidden bg-background text-foreground">
       <aside
         className={cn(
           "shrink-0 border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-all duration-200 hidden md:flex flex-col",
           sidebarCollapsed ? "w-14" : "w-46",
         )}
       >
-        <div className={cn("flex h-12 items-center gap-2 px-3 border-b border-sidebar-border", sidebarCollapsed && "justify-center px-0")}>
-          <div className="h-7 w-7 rounded-md bg-gradient-to-br from-primary to-info grid place-items-center text-primary-foreground font-bold text-xs">JC</div>
+        <div
+          className={cn(
+            "flex h-12 items-center gap-2 px-3 border-b border-sidebar-border",
+            sidebarCollapsed && "justify-center px-0",
+          )}
+        >
+          <div className="h-7 w-7 rounded-md bg-gradient-to-br from-primary to-info grid place-items-center text-primary-foreground font-bold text-xs">
+            JC
+          </div>
           {!sidebarCollapsed && <span className="font-semibold tracking-tight">Joe Cool</span>}
         </div>
         <nav className="flex-1 px-2 py-2 space-y-0.5 overflow-y-auto scrollbar-thin">
           {nav.map((item) => {
             const isActive =
               item.to === paths.dashboard
-                ? path === paths.home || path === paths.dashboard || path.startsWith(`${paths.dashboard}/`)
+                ? path === paths.home ||
+                  path === paths.dashboard ||
+                  path.startsWith(`${paths.dashboard}/`)
                 : item.to === paths.stocks
                   ? path === paths.stocks || path.startsWith("/stock/")
                   : item.to === paths.addresses
@@ -141,14 +164,20 @@ export function AppShell({ children }: AppShellProps) {
             className="w-full flex items-center justify-center h-8 rounded-md hover:bg-sidebar-accent text-sidebar-foreground/70"
             aria-label="Toggle sidebar"
           >
-            {sidebarCollapsed ? <PanelLeft className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
+            {sidebarCollapsed ? (
+              <PanelLeft className="h-4 w-4" />
+            ) : (
+              <PanelLeftClose className="h-4 w-4" />
+            )}
           </button>
         </div>
       </aside>
 
       <div className="flex-1 flex flex-col min-w-0">
         <header className="h-12 shrink-0 border-b border-border bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60 flex items-center gap-3 px-3 sticky top-0 z-20">
-          <div className="md:hidden h-7 w-7 rounded-md bg-gradient-to-br from-primary to-info grid place-items-center text-primary-foreground font-bold text-xs">JC</div>
+          <div className="md:hidden h-7 w-7 rounded-md bg-gradient-to-br from-primary to-info grid place-items-center text-primary-foreground font-bold text-xs">
+            JC
+          </div>
           <div className="flex-1 max-w-md relative">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
             <Input
@@ -161,10 +190,21 @@ export function AppShell({ children }: AppShellProps) {
               }}
             />
           </div>
-          <Button variant="outline" size="sm" className="h-8 gap-1.5 hidden sm:flex" onClick={() => toast.success("Checked in")}>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 gap-1.5 hidden sm:flex"
+            onClick={() => toast.success("Checked in")}
+          >
             <LogIn className="h-3.5 w-3.5" /> Check In/Out
           </Button>
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={toggleTheme} aria-label="Toggle theme">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            onClick={toggleTheme}
+            aria-label="Toggle theme"
+          >
             {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
           </Button>
           <DropdownMenu>
@@ -198,11 +238,9 @@ export function AppShell({ children }: AppShellProps) {
           </DropdownMenu>
         </header>
 
-        <main className="flex-1 overflow-y-auto">
-          {children}
-        </main>
+        <div className="flex-1 overflow-y-auto">{children}</div>
       </div>
-    </div>
+    </main>
   );
 }
 
@@ -212,9 +250,7 @@ interface PageHeaderProps {
   actions?: React.ReactNode;
 }
 
-export function PageHeader({
-  title, description, actions,
-}: PageHeaderProps) {
+export function PageHeader({ title, description, actions }: PageHeaderProps) {
   return (
     <div className="flex items-start justify-between gap-4 px-5 py-2 border-b border-border bg-background sticky top-0 z-10">
       <div>
