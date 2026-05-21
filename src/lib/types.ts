@@ -36,6 +36,10 @@ export interface StockItem {
   supplierCode?: string;
   status: "active" | "low" | "out" | "archived";
   imageHue: number;
+  /** Active Storage URLs from the API. */
+  images?: string[];
+  /** Base64 data URLs queued for upload on save. */
+  pendingImages?: string[];
   flags: string[];
   notes?: string;
   // Header

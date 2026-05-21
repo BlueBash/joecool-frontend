@@ -1,6 +1,7 @@
 import type { StockRow, StockWritePayload } from "@/api/stocks";
 import type { StockItem, StockMaterialRow } from "@/lib/types";
 import { stockFlagCodesFromApi, stockFlagsToApi } from "@/lib/reference";
+import { parseStockImages, pendingStockImagesForPayload } from "./stock-images";
 
 function asRecord(v: unknown): Record<string, unknown> {
   return v && typeof v === "object" ? (v as Record<string, unknown>) : {};
@@ -81,6 +82,7 @@ export function mapRowToStockItem(row: StockRow): StockItem {
     supplierCode: str(attrs.suppcode),
     status: deriveStatus(onHand, reorderLevel),
     imageHue: imageHueFromId(id),
+    images: parseStockImages(attrs.images),
     flags: [],
     flagCodes: stockFlagCodesFromApi(attrs.flags),
     notes: str(attrs.notes ?? attrs.note),
@@ -212,6 +214,9 @@ export function stockItemToPayload(item: StockItem): StockWritePayload {
       intro_date: item.introDate,
     };
   }
+
+  const pendingImages = pendingStockImagesForPayload(item.pendingImages);
+  if (pendingImages) payload.images = pendingImages;
 
   return payload;
 }

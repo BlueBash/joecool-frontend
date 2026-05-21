@@ -30,7 +30,7 @@ export function EditScreen({
       <div className="px-5 pt-3 pb-3 border-b border-border bg-background sticky top-0 z-10">
         <Link
           to={backTo}
-          className="inline-flex items-center gap-1 text-[12.5px] text-muted-foreground hover:text-foreground mb-1.5"
+          className="inline-flex items-center gap-1 text-[12px] text-muted-foreground hover:text-foreground mb-1.5"
         >
           <ChevronLeft className="h-3.5 w-3.5" /> {backLabel}
         </Link>

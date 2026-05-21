@@ -1,0 +1,10 @@
+export { StockEditMakeupTab } from "./StockEditMakeupTab";
+export { StockEditSeoTab } from "./StockEditSeoTab";
+export { StockEditSupplierTab } from "./StockEditSupplierTab";
+export { StockEditLevelsTab } from "./StockEditLevelsTab";
+export { StockEditCostTab } from "./StockEditCostTab";
+export { StockEditSellingTab } from "./StockEditSellingTab";
+export { StockEditFlagsTab } from "./StockEditFlagsTab";
+export { StockEditNotesTab } from "./StockEditNotesTab";
+export { StockEditDetailsTab } from "./StockEditDetailsTab";
+export { StockEditKitsTab } from "./StockEditKitsTab";
