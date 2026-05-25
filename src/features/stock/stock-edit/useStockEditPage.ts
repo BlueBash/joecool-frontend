@@ -3,8 +3,7 @@ import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { GenerateNextCodeParams, stocks } from "@/api/stocks";
 import type { ApiError } from "@/api/_client";
-import type { ReferenceOption } from "@/lib/reference";
-import type { StockItem, StockMaterialRowUpdate } from "@/lib/types";
+import type { StockItem } from "@/lib/types";
 import { applyApiFieldErrors, firstFormErrorMessage, useEntityForm } from "@/lib/form";
 import { useDeleteConfirm } from "@/hooks/use-delete-confirm";
 import { StockFormSchema, type StockFormValues } from "../stock-form-schema";
@@ -18,7 +17,7 @@ import {
 } from "../stock-code-generation";
 import { useStockDetail } from "../hooks";
 import { mapRowToStockItem, stockItemToPayload } from "../map-stock";
-import { blankStock, refId } from "./utils";
+import { blankStock } from "./utils";
 
 const routeApi = getRouteApi("/stock/$id");
 
@@ -124,25 +123,6 @@ export function useStockEditPage() {
 
   const isSaving = isSubmitting || createStock.isPending || updateStock.isPending;
 
-  const set = <K extends keyof StockItem>(k: K, v: StockItem[K]) =>
-    setValue(k as keyof StockFormValues, v as never, { shouldDirty: true, shouldTouch: true });
-
-  const setFlag = (code: string, v: boolean) =>
-    setValue(
-      "flagCodes",
-      { ...(draft.flagCodes ?? {}), [code]: v },
-      { shouldDirty: true, shouldTouch: true },
-    );
-
-  const bindRef =
-    (idKey: keyof StockItem, labelKey: keyof StockItem) =>
-    (refValue: string | number | null, opt?: ReferenceOption) => {
-      setValue(idKey as keyof StockFormValues, refId(refValue) as never, { shouldDirty: true });
-      if (opt) {
-        setValue(labelKey as keyof StockFormValues, opt.name as never, { shouldDirty: true });
-      }
-    };
-
   const save = handleSubmit(
     (values) => {
       const payload = stockItemToPayload({ ...values, code: values.code.toUpperCase() });
@@ -186,26 +166,8 @@ export function useStockEditPage() {
     }
   };
 
-  const existingImages = draft.images ?? [];
   const pendingImages = draft.pendingImages ?? [];
   const hasPendingImages = pendingImages.length > 0;
-
-  const setPendingImages = (images: string[]) =>
-    setValue("pendingImages", images, { shouldDirty: true, shouldTouch: true });
-
-  const materials = draft.materials ?? [];
-  const setMaterial = (idx: number, patch: StockMaterialRowUpdate) => {
-    const next = materials.map((m, i) => (i === idx ? { ...m, ...patch } : m));
-    set("materials", next);
-  };
-  const addMaterial = () => set("materials", [...materials, { material: "", composite: 0 }]);
-  const removeMaterial = (idx: number) =>
-    set(
-      "materials",
-      materials.filter((_, i) => i !== idx),
-    );
-
-  const tabProps = { draft, set, bindRef };
 
   return {
     id,
@@ -226,15 +188,6 @@ export function useStockEditPage() {
     handleGenerateCode,
     save,
     onDelete,
-    existingImages,
-    pendingImages,
-    setPendingImages,
-    materials,
-    setMaterial,
-    addMaterial,
-    removeMaterial,
     onGenerateBarcodes,
-    setFlag,
-    tabProps,
   };
 }

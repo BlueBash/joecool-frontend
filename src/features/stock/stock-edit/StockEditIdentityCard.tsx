@@ -1,18 +1,21 @@
+import { useFormContext } from "react-hook-form";
 import { FieldError } from "@/components/form";
 import { EditCard } from "@/components/edit-screen";
 import { Field, FormGrid } from "@/components/form-primitives";
+import { FormDateField, FormTextField } from "@/components/form";
+import { StockEditedTitleField } from "./form-helpers";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import type { GenerateNextCodeParams } from "@/api/stocks";
 import type { CodeGenerationFieldErrors } from "../stock-code-generation";
+import type { StockFormValues } from "../stock-form-schema";
 import { StockImagePreview } from "../StockImagePreview";
 import { StockCodeRulesDropdown } from "./StockCodeRulesDropdown";
 import { STOCK_FIELD_CLASS } from "./field-classes";
-import type { StockEditTabProps } from "./types";
+import { StockInlineCheckbox } from "./form-helpers";
 
-type StockEditIdentityCardProps = StockEditTabProps & {
+type StockEditIdentityCardProps = {
   isNew: boolean;
-  codeError?: string;
   existingImages: string[];
   pendingImages: string[];
   imageHue: number;
@@ -24,10 +27,7 @@ type StockEditIdentityCardProps = StockEditTabProps & {
 };
 
 export function StockEditIdentityCard({
-  draft,
-  set,
   isNew,
-  codeError,
   existingImages,
   pendingImages,
   imageHue,
@@ -38,6 +38,12 @@ export function StockEditIdentityCard({
   onGenerateCode,
 }: StockEditIdentityCardProps) {
   const { TXT, MONO } = STOCK_FIELD_CLASS;
+  const {
+    register,
+    formState: { errors, isSubmitting },
+  } = useFormContext<StockFormValues>();
+  const codeError = errors.code?.message as string | undefined;
+  const codeErrorId = codeError ? "code-error" : undefined;
 
   return (
     <EditCard title="Identity">
@@ -66,48 +72,32 @@ export function StockEditIdentityCard({
               required
             >
               <Input
-                value={draft.code}
-                onChange={(e) => set("code", e.target.value.toUpperCase())}
                 readOnly={!isNew}
-                className={cn(MONO, !isNew && "bg-muted")}
+                disabled={isSubmitting}
                 aria-invalid={!!codeError}
+                aria-describedby={codeErrorId}
+                className={cn(MONO, !isNew && "bg-muted")}
+                {...register("code", {
+                  setValueAs: (v) => String(v ?? "").toUpperCase(),
+                })}
               />
-              <FieldError message={codeError} />
+              <FieldError id={codeErrorId} message={codeError} />
             </Field>
-            <Field label="Intro Date">
-              <Input
-                type="date"
-                value={draft.introDate}
-                onChange={(e) => set("introDate", e.target.value)}
-                className={TXT}
-              />
-            </Field>
-            <Field label="Edited Title">
-              <Input
-                value={draft.editedTitle ?? draft.title}
-                onChange={(e) => set("editedTitle", e.target.value)}
-                className={TXT}
-              />
-            </Field>
-            <Field label="Generated Title">
-              <Input
-                value={draft.generatedTitle ?? ""}
-                onChange={(e) => set("generatedTitle", e.target.value)}
-                className={TXT}
-              />
-            </Field>
+            <FormDateField<StockFormValues>
+              name="introDate"
+              label="Intro Date"
+              inputClassName={TXT}
+            />
+            <StockEditedTitleField />
+            <FormTextField<StockFormValues>
+              name="generatedTitle"
+              label="Generated Title"
+              inputClassName={TXT}
+            />
           </FormGrid>
         </div>
       </div>
-      <label className="inline-flex items-center gap-2 text-[13px] mt-3">
-        <input
-          type="checkbox"
-          checked={!!draft.toZoho}
-          onChange={(e) => set("toZoho", e.target.checked)}
-          className="h-3.5 w-3.5"
-        />
-        TO Zoho
-      </label>
+      <StockInlineCheckbox name="toZoho">TO Zoho</StockInlineCheckbox>
     </EditCard>
   );
 }

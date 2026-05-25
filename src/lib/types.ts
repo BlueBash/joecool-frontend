@@ -2,11 +2,18 @@ export type ID = string;
 
 /** Composed material row on a stock item. */
 export interface StockMaterialRow {
+  materialId?: number;
   material: string;
   composite: number;
 }
 
 export type StockMaterialRowUpdate = Partial<StockMaterialRow>;
+
+/** Stock range row on SEO tab (`range.range_N` in API). */
+export interface StockRangeRow {
+  rangeId?: number;
+  range: string;
+}
 
 export interface StockItem {
   id: ID;
@@ -30,6 +37,7 @@ export interface StockItem {
   reorderLevel: number;
   color: string;
   size?: string;
+  ringSizeId?: number;
   introDate: string;
   costPrice: number;
   sellingPrice: number;
@@ -72,17 +80,42 @@ export interface StockItem {
   // SEO
   wholesaleBlurb?: string;
   consumerBlurb?: string;
+  ranges?: StockRangeRow[];
   seoKeywords?: string;
   // Supplier
+  supplierId?: number;
+  supplier?: string;
   supplierName?: string;
+  supplierKind?: string;
+  supplierAddress?: string;
+  supplierAddress2?: string;
+  supplierTown?: string;
+  supplierRegion?: string;
+  supplierZip?: string;
   supplierCountry?: string;
   supplierIso?: string;
+  supplierContact?: string;
+  supplierPhone?: string;
+  supplierEmail?: string;
+  supplierWebsite?: string;
   supplierItemCode?: string;
   buyer?: string;
+  manufacturerId?: number;
+  manufacturer?: string;
   manufacturerCode?: string;
   manufacturerName?: string;
+  manufacturerKind?: string;
+  manufacturerAddress?: string;
+  manufacturerAddress2?: string;
+  manufacturerTown?: string;
+  manufacturerRegion?: string;
+  manufacturerZip?: string;
   manufacturerCountry?: string;
   manufacturerIso?: string;
+  manufacturerContact?: string;
+  manufacturerPhone?: string;
+  manufacturerEmail?: string;
+  manufacturerWebsite?: string;
   manufrItemCode?: string;
   wholesaleReorderLevel?: number;
   reorderQty?: number;

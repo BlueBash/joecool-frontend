@@ -1,13 +1,18 @@
 import { useMemo, useState } from "react";
 import { Download, Printer, Mail, MoreHorizontal } from "lucide-react";
-import { useStocks, useOrders, useTxns, useAddresses, useTime } from "@/store";
+import { useAddressDirectory } from "@/features/addresses/hooks";
+import { useOperatorDirectory } from "@/features/operators/hooks";
+import { useStockDirectory } from "@/features/stock/hooks";
+import type { Order, TimeEntry, Transaction } from "@/lib/types";
 import { PageHeader, CopyableCode } from "@/components/app-shell";
 import { DataTable, Toolbar, type Column } from "@/components/data-table";
 import { ColumnPicker, type ColumnDef } from "@/components/column-picker";
 import { PaginationBar } from "@/components/pagination-bar";
 import { Pill } from "@/components/pill";
 import { Button } from "@/components/ui/button";
+import { DateRangeField } from "@/components/date-field";
 import { Input } from "@/components/ui/input";
+import { apiDateDaysAgo, todayApiDate } from "@/lib/dates";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
@@ -29,12 +34,11 @@ const REPORT_OPTIONS = [
 const fmt = (n: number) =>
   new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP" }).format(n);
 
-const isoDaysAgo = (d: number) => {
-  const t = new Date();
-  t.setDate(t.getDate() - d);
-  return t.toISOString().slice(0, 10);
-};
-const today = () => new Date().toISOString().slice(0, 10);
+const isoDaysAgo = (d: number) => apiDateDaysAgo(d);
+const today = () => todayApiDate();
+
+/** Max rows fetched per report from platform list APIs (client-side filter/export). */
+const REPORT_FETCH_SIZE = 500;
 
 function inRange(date: string, from: string, to: string) {
   if (!date) return true;
@@ -53,11 +57,16 @@ export function ReportsPage() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
 
-  const stocks    = useStocks(s => s.items);
-  const orders    = useOrders(s => s.items);
-  const txns      = useTxns(s => s.items);
-  const addresses = useAddresses(s => s.items);
-  const time      = useTime(s => s.items);
+  const stockDirectory = useStockDirectory({ page: 1, pageSize: REPORT_FETCH_SIZE });
+  const addressDirectory = useAddressDirectory({ page: 1, pageSize: REPORT_FETCH_SIZE });
+  const operatorDirectory = useOperatorDirectory({ page: 1, pageSize: REPORT_FETCH_SIZE });
+
+  const stocks = stockDirectory.items;
+  const addresses = addressDirectory.items;
+  const operators = operatorDirectory.items;
+  const orders: Order[] = [];
+  const txns: Transaction[] = [];
+  const time: TimeEntry[] = [];
 
   type Built = {
     columns: ColumnDef[];
@@ -227,8 +236,7 @@ export function ReportsPage() {
         e.operatorName.toLowerCase().includes(search.toLowerCase()));
     const operatorOptions = [
       { value: "all", label: "All operators" },
-      ...Array.from(new Map(time.map(t => [t.operatorCode, t.operatorName])).entries())
-        .map(([code, name]) => ({ value: code, label: `${code} — ${name}` })),
+      ...operators.map((o) => ({ value: o.code, label: `${o.code} — ${o.name}` })),
     ];
     return {
       columns: [
@@ -253,7 +261,7 @@ export function ReportsPage() {
       totalLabel: "Total hours",
       totalValue: rows.reduce((s, r) => s + (r.totalWorked ?? 0), 0),
     };
-  }, [report, from, to, search, extra, txns, orders, addresses, stocks, time]);
+  }, [report, from, to, search, extra, txns, orders, addresses, stocks, time, operators]);
 
   const [visible, setVisible] = useState<Set<string>>(() => new Set(built.columns.map(c => c.key)));
 
@@ -313,14 +321,12 @@ export function ReportsPage() {
 
         {report !== "addresses" && report !== "stocks" && (
           <>
-            <div className="flex items-center gap-1.5">
-              <span className="text-[12px] text-muted-foreground">From</span>
-              <Input type="date" value={from} onChange={(e) => { setFrom(e.target.value); setPage(1); }} className="h-8 w-36 text-[13px]" />
-            </div>
-            <div className="flex items-center gap-1.5">
-              <span className="text-[12px] text-muted-foreground">To</span>
-              <Input type="date" value={to} onChange={(e) => { setTo(e.target.value); setPage(1); }} className="h-8 w-36 text-[13px]" />
-            </div>
+            <DateRangeField
+              from={from}
+              to={to}
+              onFromChange={(v) => { setFrom(v ?? ""); setPage(1); }}
+              onToChange={(v) => { setTo(v ?? ""); setPage(1); }}
+            />
           </>
         )}
 

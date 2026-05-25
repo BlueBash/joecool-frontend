@@ -1,5 +1,6 @@
 import type { StockRow, StockWritePayload } from "@/api/stocks";
-import type { StockItem, StockMaterialRow } from "@/lib/types";
+import { todayApiDate } from "@/lib/dates";
+import type { StockItem, StockMaterialRow, StockRangeRow } from "@/lib/types";
 import { stockFlagCodesFromApi, stockFlagsToApi } from "@/lib/reference";
 import { parseStockImages, pendingStockImagesForPayload } from "./stock-images";
 
@@ -10,6 +11,29 @@ function asRecord(v: unknown): Record<string, unknown> {
 function str(v: unknown, fallback = ""): string {
   if (v == null) return fallback;
   return String(v);
+}
+
+function firstNonEmpty(...values: unknown[]): string {
+  for (const v of values) {
+    const s = str(v);
+    if (s.trim()) return s;
+  }
+  return "";
+}
+
+function flatRelationLabel(value: unknown): string {
+  if (value == null || typeof value === "object") return "";
+  return str(value);
+}
+
+/** Label from a hydrated JSON:API relationship or flat `*_name` fields. */
+function relationLabel(rel: Record<string, unknown>, ...flat: unknown[]): string {
+  return firstNonEmpty(
+    rel.name,
+    rel.code,
+    rel.whlsl_title,
+    ...flat.map(flatRelationLabel),
+  );
 }
 
 function num(v: unknown, fallback = 0): number {
@@ -24,12 +48,56 @@ function idNum(v: unknown): number | undefined {
   return Number.isFinite(n) ? n : undefined;
 }
 
+function optionalNum(v: unknown): number | undefined {
+  if (v == null || v === "") return undefined;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : undefined;
+}
+
 function parseMaterials(raw: unknown): StockMaterialRow[] {
   if (!raw || typeof raw !== "object") return [];
   const obj = raw as Record<string, unknown>;
   return Object.entries(obj)
     .filter(([k]) => k.startsWith("material_"))
     .map(([, v]) => ({ material: str(v), composite: 0 }));
+}
+
+function rangeKeyOrder(key: string): number {
+  const m = /^range_(\d+)$/.exec(key);
+  return m ? Number(m[1]) : Number.MAX_SAFE_INTEGER;
+}
+
+function parseRanges(raw: unknown): StockRangeRow[] {
+  if (!raw || typeof raw !== "object") return [];
+  const obj = raw as Record<string, unknown>;
+  return Object.entries(obj)
+    .filter(([k]) => k.startsWith("range_"))
+    .sort(([a], [b]) => rangeKeyOrder(a) - rangeKeyOrder(b))
+    .map(([, v]) => ({ rangeId: idNum(v), range: "" }));
+}
+
+function blurbTypeKey(type: unknown): "wholesale" | "consumer" | null {
+  if (type === 0 || type === "0") return "wholesale";
+  if (type === 1 || type === "1") return "consumer";
+  const s = String(type).toLowerCase();
+  if (s.includes("wholesale") || s === "wholesaler") return "wholesale";
+  if (s.includes("consumer")) return "consumer";
+  return null;
+}
+
+/** Reads `blurbs` from stock detail include (`blurb_type` 0/1 or wholesale/consumer strings). */
+function parseStockBlurbs(raw: unknown): { wholesaleBlurb: string; consumerBlurb: string } {
+  const out = { wholesaleBlurb: "", consumerBlurb: "" };
+  const rows = Array.isArray(raw) ? raw : raw != null && typeof raw === "object" ? [raw] : [];
+  for (const row of rows) {
+    const b = asRecord(row);
+    const text = str(b.blurb);
+    if (!text) continue;
+    const kind = blurbTypeKey(b.blurb_type);
+    if (kind === "wholesale") out.wholesaleBlurb = text;
+    else if (kind === "consumer") out.consumerBlurb = text;
+  }
+  return out;
 }
 
 function deriveStatus(onHand: number, reorderLevel: number): StockItem["status"] {
@@ -49,7 +117,12 @@ export function mapRowToStockItem(row: StockRow): StockItem {
   const attrs = asRecord(row);
   const id = str(attrs.id ?? row.id);
   const code = str(attrs.code);
-  const title = str(attrs.whlsl_title ?? attrs.edited_title ?? attrs.generated_title ?? row.name);
+  const title = firstNonEmpty(
+    attrs.whlsl_title,
+    attrs.edited_title,
+    attrs.generated_title,
+    row.name,
+  );
   const reorderLevel = num(attrs.reorder_lvl_whlsl ?? attrs.reorder_level, 5);
   const onHand = num(
     attrs.free ?? attrs.spare ?? attrs.stock_sls ?? attrs.warehouse_levels ?? attrs.on_hand,
@@ -58,28 +131,40 @@ export function mapRowToStockItem(row: StockRow): StockItem {
   const dimensionInfo = asRecord(attrs.dimension_info);
   const fittingInfo = asRecord(attrs.fitting_info);
   const costPrice = asRecord(attrs.cost_price);
+  const display = asRecord(attrs.display);
+  const category = asRecord(attrs.category);
+  const tariffCode = asRecord(attrs.tariff_code);
+  const stockPackagingData = asRecord(attrs.stock_packaging_data);
+  const noOfSizes = asRecord(fittingInfo.no_of_sizes);
+  const ringSizeRaw = firstNonEmpty(noOfSizes.size_1, attrs.size);
+  const ringSizeId = idNum(ringSizeRaw);
+  const blurbs = parseStockBlurbs(attrs.blurbs);
+  const supplierData = asRecord(attrs.supplier_data);
 
   const introDate =
     str(dimensionInfo.intro_date) ||
     str(fittingInfo.intro_date) ||
     str(attrs.intro_date).slice(0, 10) ||
-    new Date().toISOString().slice(0, 10);
+    todayApiDate();
 
   return {
     id,
     code,
     title,
-    category: str(attrs.category_name ?? attrs.category),
-    categoryId: idNum(attrs.category_id),
+    category: relationLabel(category, attrs.category_name, attrs.category),
+    categoryId: idNum(attrs.category_id ?? category.id),
     onHand,
     reorderLevel,
     color: str(attrs.colour ?? attrs.color, "—"),
     colourId: idNum(attrs.colour_id),
-    size: str(attrs.size),
+    ringSizeId,
+    size: ringSizeId ? "" : str(ringSizeRaw),
     introDate,
     costPrice: num(costPrice.landed_factr ?? costPrice.calc_ready ?? attrs.cost),
     sellingPrice: num(attrs.sell_gbp ?? attrs.gbp_whlsl),
-    supplierCode: str(attrs.suppcode),
+    supplierId: idNum(attrs.suppcode ?? supplierData.id),
+    supplier: firstNonEmpty(supplierData.name, supplierData.code),
+    supplierCode: str(supplierData.code),
     status: deriveStatus(onHand, reorderLevel),
     imageHue: imageHueFromId(id),
     images: parseStockImages(attrs.images),
@@ -91,42 +176,48 @@ export function mapRowToStockItem(row: StockRow): StockItem {
     toZoho: !!(attrs.flag_zoho ?? (attrs.flags && asRecord(attrs.flags).flag_zoho)),
     categoryCode: str(attrs.category_code),
     colorCode: str(attrs.colour_code ?? attrs.color_code),
-    displayCode: str(attrs.display_code),
-    displayName: str(attrs.display_name),
-    displayId: idNum(attrs.display_id),
+    displayCode: str(attrs.display_code ?? display.code),
+    displayName: str(attrs.display_name ?? display.name),
+    displayId: idNum(attrs.display_id ?? display.id),
+    cost: optionalNum(display.cost ?? attrs.display_cost),
     uniqueDescription: str(attrs.uniq_desc),
     packBarcode: str(attrs.pack_barcode),
     retailBarcode: str(attrs.retail_barcode),
-    assortment: str(attrs.assortment_name ?? attrs.assortment),
+    assortment: relationLabel(asRecord(attrs.assortment), attrs.assortment_name, attrs.assortment),
     assortmentId: idNum(attrs.assortment_id),
-    collection: str(attrs.collection_name ?? attrs.collection),
+    collection: relationLabel(asRecord(attrs.collection), attrs.collection_name, attrs.collection),
     collectionId: idNum(attrs.collection_id),
-    selections: str(attrs.selection_name ?? attrs.selection),
+    selections: relationLabel(asRecord(attrs.selection), attrs.selection_name, attrs.selection),
     selectionId: idNum(attrs.selection_id),
-    packaging: str(attrs.packaging_name ?? attrs.packaging),
-    packagingId: idNum(attrs.packaging_id ?? attrs.stock_packaging_id),
-    gender: str(attrs.gender_name ?? attrs.gender),
+    packaging: firstNonEmpty(stockPackagingData.code, attrs.packaging_name),
+    packagingId: idNum(attrs.stock_packaging_id ?? stockPackagingData.id),
+    gender: relationLabel(asRecord(attrs.gender), attrs.gender_name, attrs.gender),
     genderId: idNum(attrs.gender_id),
-    units: str(attrs.unit_name ?? attrs.unit),
+    units: relationLabel(asRecord(attrs.unit), attrs.unit_name, attrs.unit),
     unitId: idNum(attrs.unit_id),
-    itemTariff: str(attrs.tariff_code_name ?? attrs.tariff_code),
-    tariffCodeId: idNum(attrs.tariff_code_id),
-    vatRate: str(attrs.vat_rate_code_name ?? attrs.vat_rate_code),
+    itemTariff: relationLabel(tariffCode, attrs.tariff_code_name, attrs.tariff_code),
+    tariffCodeId: idNum(attrs.tariff_code_id ?? tariffCode.id),
+    vatRate: relationLabel(asRecord(attrs.vat_rate_code), attrs.vat_rate_code_name, attrs.vat_rate_code),
     vatRateCodeId: idNum(attrs.vat_rate_code_id),
+    unchanged: str(attrs.retail_label),
+    categoryTariff: str(attrs.category_tarrif ?? category.category_tarrif),
     joeOnlineRangeId: idNum(attrs.joe_online_range_id),
     stockBuyerId: idNum(attrs.stock_buyer_id),
     frontLocation: str(attrs.locn_front),
     backLocation: str(attrs.locn_back),
     catalogueLocation: str(attrs.catal_page),
     materials: parseMaterials(attrs.materials),
-    wholesaleBlurb: str(attrs.wholesale_blurb),
-    consumerBlurb: str(attrs.consumer_blurb),
+    wholesaleBlurb: firstNonEmpty(blurbs.wholesaleBlurb, attrs.wholesale_blurb),
+    consumerBlurb: firstNonEmpty(blurbs.consumerBlurb, attrs.consumer_blurb),
+    ranges: parseRanges(attrs.range),
     seoKeywords: str(attrs.keywords),
-    supplierName: str(attrs.suppitem),
-    supplierItemCode: str(attrs.suppcode),
+    supplierName: str(supplierData.name),
+    supplierItemCode: str(attrs.suppitem),
     buyer: str(attrs.buyer ?? attrs.stock_buyer_name),
-    manufacturerCode: str(attrs.manufcode),
+    manufacturerId: idNum(attrs.manufcode),
+    manufacturer: str(attrs.manufitem),
     manufacturerName: str(attrs.manufitem),
+    manufrItemCode: str(attrs.manufitem),
     manufacturerCountry: str(attrs.manu_country_of_origin ?? attrs.country_of_origin),
     wholesaleReorderLevel: num(attrs.reorder_lvl_whlsl),
     reorderQty: num(attrs.reorder_qnty),
@@ -149,10 +240,16 @@ export function stockItemToPayload(item: StockItem): StockWritePayload {
     code: item.code,
     whlsl_title: item.editedTitle ?? item.title,
     generated_title: item.generatedTitle,
-    suppcode: item.supplierCode ?? item.supplierItemCode,
-    suppitem: item.supplierName,
-    manufcode: item.manufacturerCode,
-    manufitem: item.manufacturerName,
+    suppcode:
+      item.supplierId != null
+        ? String(item.supplierId)
+        : item.supplierCode || undefined,
+    suppitem: item.supplierItemCode || item.supplierName || undefined,
+    manufcode:
+      item.manufacturerId != null
+        ? String(item.manufacturerId)
+        : item.manufacturerCode || undefined,
+    manufitem: item.manufrItemCode || item.manufacturerName || undefined,
     pack_qnty: item.packQuantity,
     pack_barcode: item.packBarcode,
     retail_barcode: item.retailBarcode,
@@ -167,6 +264,7 @@ export function stockItemToPayload(item: StockItem): StockWritePayload {
     volume_ccs: item.volume,
     country_of_origin: item.manufacturerCountry,
     uniq_desc: item.uniqueDescription || undefined,
+    category_tarrif: item.categoryTariff || undefined,
     category_id: item.categoryId,
     colour_id: item.colourId,
     assortment_id: item.assortmentId,
@@ -174,8 +272,8 @@ export function stockItemToPayload(item: StockItem): StockWritePayload {
     selection_id: item.selectionId,
     gender_id: item.genderId,
     unit_id: item.unitId,
-    packaging_id: item.packagingId,
     stock_packaging_id: item.packagingId,
+    retail_label: item.unchanged || undefined,
     display_id: item.displayId,
     tariff_code_id: item.tariffCodeId,
     vat_rate_code_id: item.vatRateCodeId,
@@ -197,6 +295,14 @@ export function stockItemToPayload(item: StockItem): StockWritePayload {
     payload.materials = materials;
   }
 
+  if (item.ranges?.length) {
+    const range: Record<string, string> = {};
+    item.ranges.forEach((r, i) => {
+      if (r.rangeId != null) range[`range_${i + 1}`] = String(r.rangeId);
+    });
+    if (Object.keys(range).length) payload.range = range;
+  }
+
   const blurbs: Record<string, unknown>[] = [];
   if (item.wholesaleBlurb) blurbs.push({ blurb_type: 0, blurb: item.wholesaleBlurb });
   if (item.consumerBlurb) blurbs.push({ blurb_type: 1, blurb: item.consumerBlurb });
@@ -206,13 +312,20 @@ export function stockItemToPayload(item: StockItem): StockWritePayload {
     payload.notes_attributes = [{ note_type: 0, note: item.notes }];
   }
 
+  const fittingInfoAttributes: Record<string, unknown> = {};
   if (item.introDate) {
+    fittingInfoAttributes.intro_date = item.introDate;
     payload.dimension_info_attributes = {
       intro_date: item.introDate,
     };
-    payload.fitting_info_attributes = {
-      intro_date: item.introDate,
-    };
+  }
+  if (item.ringSizeId != null) {
+    fittingInfoAttributes.no_of_sizes = { size_1: String(item.ringSizeId) };
+  } else if (item.size?.trim()) {
+    fittingInfoAttributes.no_of_sizes = { size_1: item.size.trim() };
+  }
+  if (Object.keys(fittingInfoAttributes).length) {
+    payload.fitting_info_attributes = fittingInfoAttributes;
   }
 
   const pendingImages = pendingStockImagesForPayload(item.pendingImages);

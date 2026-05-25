@@ -3,14 +3,17 @@ export interface ReferenceOption {
   id: number | string;
   name: string;
   code?: string;
+  [key: string]: string | number | undefined;
 }
 
-export function referenceLabel(opt: ReferenceOption): string {
-  if (opt.code && opt.name && opt.code !== opt.name) {
-    return `${opt.code} — ${opt.name}`;
-  }
-  return opt.name || String(opt.code ?? opt.id);
-}
+export type { ReferenceDisplayConfig } from "@/lib/reference-display";
+export {
+  DEFAULT_REFERENCE_DISPLAY,
+  referenceBadgeText,
+  referenceDisplayText,
+  referenceLabel,
+  referenceSearchText,
+} from "@/lib/reference-display";
 
 export function parseReferenceId(value: string | number | null | undefined): number | null {
   if (value == null || value === "") return null;

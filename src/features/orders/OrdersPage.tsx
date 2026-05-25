@@ -1,17 +1,15 @@
 import { useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { Plus, Download } from "lucide-react";
-import { useOrders } from "@/store";
 import { PageHeader, CopyableCode } from "@/components/app-shell";
 import { DataTable, Toolbar, TableSearch, type Column } from "@/components/data-table";
 import { Pill } from "@/components/pill";
 import { Button } from "@/components/ui/button";
 import { PaginationBar } from "@/components/pagination-bar";
-import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog";
-import { RowActions, EditLink, DeleteButton } from "@/components/row-actions";
-import { useDeleteConfirm } from "@/hooks/use-delete-confirm";
+import { RowActions, EditLink } from "@/components/row-actions";
 import { usePaginated } from "@/hooks/use-paginated";
 import { toast } from "sonner";
+import { formatApiDateForDisplay } from "@/lib/dates";
 import type { Order } from "@/lib/types";
 
 const fmt = (n: number) => new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP" }).format(n);
@@ -23,21 +21,22 @@ export function OrdersPage() {
 }
 
 function OrdersListing() {
-  const { items, add, remove } = useOrders();
   const nav = useNavigate();
   const [q, setQ] = useState("");
+  const items: Order[] = [];
 
-  const filtered = useMemo(() => items.filter(o =>
-    !q || [o.code, o.addrName, o.addrCode, o.ourRef ?? "", o.logRef].some(v => v.toLowerCase().includes(q.toLowerCase()))
-  ), [items, q]);
+  const filtered = useMemo(
+    () =>
+      items.filter(
+        (o) =>
+          !q ||
+          [o.code, o.addrName, o.addrCode, o.ourRef ?? "", o.logRef].some((v) =>
+            v.toLowerCase().includes(q.toLowerCase()),
+          ),
+      ),
+    [items, q],
+  );
   const { page, setPage, pageSize, setPageSize, paged, total } = usePaginated(filtered, 10);
-
-  const deleteConfirm = useDeleteConfirm<{ id: string }>({
-    onConfirm: async ({ id }) => {
-      remove(id);
-      toast.success("Removed");
-    },
-  });
 
   const columns = [
     { key: "code", header: "Code", width: "100px", sortValue: r => r.code, cell: r => <CopyableCode value={r.code} /> },
@@ -50,7 +49,7 @@ function OrdersListing() {
         </div>
       ) },
     { key: "kind", header: "Kind", width: "100px", cell: r => <span className="text-muted-foreground">{r.kind}</span> },
-    { key: "written", header: "Written", width: "110px", align: "right", sortValue: r => r.written, cell: r => <span className="tabular-nums text-muted-foreground">{r.written}</span> },
+    { key: "written", header: "Written", width: "110px", align: "right", sortValue: r => r.written, cell: r => <span className="tabular-nums text-muted-foreground">{formatApiDateForDisplay(r.written) || r.written}</span> },
     { key: "ship", header: "Ship", width: "110px", align: "right", cell: r => <span className="tabular-nums text-muted-foreground">{r.ship}</span> },
     { key: "lines", header: "Lines", width: "70px", align: "right", cell: r => <span className="tabular-nums">{r.lines.length}</span> },
     { key: "qty", header: "Qty", width: "70px", align: "right", cell: r => <span className="tabular-nums">{totalQty(r)}</span> },
@@ -61,45 +60,25 @@ function OrdersListing() {
       cell: r => (
         <RowActions>
           <EditLink to="/order/$id" params={{ id: r.id }} title="Edit order" />
-          <DeleteButton
-            onClick={() =>
-              deleteConfirm.requestDelete({
-                title: "Delete order",
-                entityName: r.code,
-                entityType: "order",
-                meta: { id: r.id },
-              })
-            }
-          />
         </RowActions>
       ) },
   ] satisfies Column<Order>[];
 
-  const newOrder = () => {
-    const id = `o_${Date.now()}`;
-    add({
-      id, code: `C${String(Date.now()).slice(-5)}`, addrType: "Customer",
-      addrCode: "", addrName: "New Customer", logRef: "", ourRef: "",
-      kind: "REGULAR", status: "Draft",
-      written: new Date().toISOString().slice(0, 10),
-      ship: new Date().toISOString().slice(0, 10),
-      cancel: new Date().toISOString().slice(0, 10),
-      lines: [],
-    });
-    toast.success("Order created");
-    nav({ to: "/order/$id", params: { id } });
-  };
-
   return (
     <div>
-      <DeleteConfirmDialog state={deleteConfirm} />
       <PageHeader
         title="Orders"
         description="Customer & supplier orders"
         actions={
           <>
             <Button variant="outline" size="sm" className="h-8 gap-1.5"><Download className="h-3.5 w-3.5" /> Export</Button>
-            <Button size="sm" className="h-8 gap-1.5" onClick={newOrder}><Plus className="h-3.5 w-3.5" /> New Order</Button>
+            <Button
+              size="sm"
+              className="h-8 gap-1.5"
+              onClick={() => toast.info("Orders API is not connected yet.")}
+            >
+              <Plus className="h-3.5 w-3.5" /> New Order
+            </Button>
           </>
         }
       />
@@ -111,7 +90,7 @@ function OrdersListing() {
           rows={paged}
           columns={columns}
           onRowClick={(r) => nav({ to: "/order/$id", params: { id: r.id } })}
-          emptyState={q ? "No orders match your search." : "No orders yet."}
+          emptyState={q ? "No orders match your search." : "No orders yet. Connect the orders API to load data."}
         />
         <PaginationBar
           page={page} pageSize={pageSize} total={total}

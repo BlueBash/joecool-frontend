@@ -1,129 +1,55 @@
 import { useMemo } from "react";
-import { addresses, type AddressTypeParam } from "@/api/address";
-import type { ApiError } from "@/api/_client/errors";
+import { addresses } from "@/api/address";
 import type { Address, AddressType } from "@/lib/types";
 import { addressTypeToApiParam, mapRowToAddress } from "./map-address";
 
-export type AddressListFilter = "all" | AddressType;
+export type AddressKindFilter = "all" | AddressType;
 
 interface UseAddressDirectoryParams {
   page: number;
   pageSize: number;
   search?: string;
-  typeFilter?: AddressListFilter;
+  /** `all` → combined directory; `Customer` / `Supplier` → `GET /addresses?type=…` */
+  kind?: AddressKindFilter;
 }
 
-function listParams(page: number, pageSize: number, search?: string) {
-  return { page, pageSize, search: search?.trim() || undefined };
-}
-
-export function addressRowKey(address: Address): string {
-  return `${address.type}-${address.id}`;
-}
-
-function mergeAddressRows(...groups: Address[][]): Address[] {
-  const seen = new Set<string>();
-  const rows: Address[] = [];
-  for (const group of groups) {
-    for (const row of group) {
-      const key = addressRowKey(row);
-      if (seen.has(key)) continue;
-      seen.add(key);
-      rows.push(row);
-    }
-  }
-  return rows;
-}
-
-/**
- * Loads address directory rows. When `typeFilter` is `all`, fetches supplier and
- * customer lists in parallel (each with server pagination/search). Combined totals
- * are approximate — prefer a single-type filter for accurate paging.
- */
+/** Paginated address list — combined or filtered by kind. */
 export function useAddressDirectory({
   page,
   pageSize,
   search,
-  typeFilter = "all",
+  kind = "all",
 }: UseAddressDirectoryParams) {
-  const params = listParams(page, pageSize, search);
-  const fetchSuppliers = typeFilter !== "Customer";
-  const fetchCustomers = typeFilter !== "Supplier";
+  const params = { page, pageSize, search: search?.trim() || undefined };
 
-  const supplierQuery = addresses.hooks.useList("supplier", params, {
-    enabled: fetchSuppliers,
+  const typedList = addresses.hooks.useList(
+    kind !== "all" ? addressTypeToApiParam(kind) : "customer",
+    params,
+    { enabled: kind !== "all", keepPreviousData: true },
+  );
+  const directoryList = addresses.hooks.useListDirectory(params, {
+    enabled: kind === "all",
     keepPreviousData: true,
   });
+  const list = kind !== "all" ? typedList : directoryList;
 
-  const customerQuery = addresses.hooks.useList("customer", params, {
-    enabled: fetchCustomers,
-    keepPreviousData: true,
-  });
+  const items = useMemo(
+    () => (list.data?.items ?? []).map(mapRowToAddress),
+    [list.data?.items],
+  );
 
-  const supplierFallback = addresses.hooks.useListSuppliers(params, {
-    enabled:
-      fetchSuppliers &&
-      supplierQuery.isError &&
-      (supplierQuery.error as ApiError)?.isNotFound === true,
-  });
-
-  const supplierData =
-    supplierQuery.isSuccess || !supplierFallback.isEnabled
-      ? supplierQuery.data
-      : supplierFallback.data;
-
-  const isPending =
-    (fetchSuppliers && (supplierQuery.isPending || supplierFallback.isFetching)) ||
-    (fetchCustomers && customerQuery.isPending);
-
-  const isError =
-    typeFilter === "Supplier"
-      ? supplierQuery.isError && !supplierFallback.isSuccess && supplierFallback.isError
-      : typeFilter === "Customer"
-        ? customerQuery.isError
-        : fetchSuppliers &&
-          fetchCustomers &&
-          supplierQuery.isError &&
-          customerQuery.isError &&
-          !supplierFallback.isSuccess &&
-          supplierFallback.isError;
-
-  const error = supplierQuery.error ?? customerQuery.error ?? supplierFallback.error;
-
-  const items = useMemo(() => {
-    const suppliers =
-      fetchSuppliers && supplierData?.items ? supplierData.items.map(mapRowToAddress) : [];
-    const customers =
-      fetchCustomers && customerQuery.data?.items
-        ? customerQuery.data.items.map(mapRowToAddress)
-        : [];
-    return mergeAddressRows(suppliers, customers);
-  }, [fetchSuppliers, fetchCustomers, supplierData?.items, customerQuery.data?.items]);
-
-  const meta = useMemo(() => {
-    if (typeFilter === "Supplier" && supplierData?.meta) return supplierData.meta;
-    if (typeFilter === "Customer" && customerQuery.data?.meta) return customerQuery.data.meta;
-
-    const total =
-      (fetchSuppliers ? (supplierData?.meta.total ?? 0) : 0) +
-      (fetchCustomers ? (customerQuery.data?.meta.total ?? 0) : 0);
-    return {
-      page,
-      pageSize,
-      total,
-      totalPages: Math.max(1, Math.ceil(total / pageSize)),
-    };
-  }, [typeFilter, supplierData?.meta, customerQuery.data?.meta, fetchSuppliers, fetchCustomers, page, pageSize]);
-
-  const refetch = () => {
-    void Promise.all([
-      supplierQuery.refetch(),
-      customerQuery.refetch(),
-      supplierFallback.refetch(),
-    ]);
+  return {
+    items,
+    meta: list.data?.meta ?? { page, pageSize, total: 0, totalPages: 1 },
+    isPending: list.isPending,
+    isError: list.isError,
+    error: list.error,
+    refetch: list.refetch,
   };
+}
 
-  return { items, meta, isPending, isError, error, refetch };
+export function addressRowKey(address: Address): string {
+  return `${address.type}-${address.id}`;
 }
 
 export function useAddressDetail(id: string | undefined, enabled: boolean) {

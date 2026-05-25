@@ -1,3 +1,4 @@
+import { todayApiDate } from "@/lib/dates";
 import { STOCK_CREATE_DEFAULT_FLAGS } from "@/lib/reference";
 import type { StockItem } from "@/lib/types";
 
@@ -10,7 +11,7 @@ export function blankStock(): StockItem {
     onHand: 0,
     reorderLevel: 5,
     color: "",
-    introDate: new Date().toISOString().slice(0, 10),
+    introDate: todayApiDate(),
     costPrice: 0,
     sellingPrice: 0,
     status: "active",
@@ -19,6 +20,9 @@ export function blankStock(): StockItem {
     flagCodes: { ...STOCK_CREATE_DEFAULT_FLAGS },
     frontLocation: "A",
     backLocation: "A",
+    materials: [],
+    ranges: [],
+    pendingImages: [],
   };
 }
 

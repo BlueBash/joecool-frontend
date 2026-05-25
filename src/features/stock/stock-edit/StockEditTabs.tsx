@@ -1,12 +1,7 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { StockImagesTab } from "../StockImagesTab";
 import { STOCK_EDIT_TABS } from "./constants";
-import type {
-  StockEditFlagsTabProps,
-  StockEditImagesTabProps,
-  StockEditMakeupTabProps,
-  StockEditTabProps,
-} from "./types";
+import type { StockEditMakeupTabProps } from "./types";
 import {
   StockEditCostTab,
   StockEditDetailsTab,
@@ -21,18 +16,10 @@ import {
 } from "./tabs";
 
 type StockEditTabsProps = {
-  tabProps: StockEditTabProps;
   makeupTabProps: StockEditMakeupTabProps;
-  flagsTabProps: StockEditFlagsTabProps;
-  imagesTabProps: StockEditImagesTabProps;
 };
 
-export function StockEditTabs({
-  tabProps,
-  makeupTabProps,
-  flagsTabProps,
-  imagesTabProps,
-}: StockEditTabsProps) {
+export function StockEditTabs({ makeupTabProps }: StockEditTabsProps) {
   return (
     <Tabs defaultValue="makeup" className="w-full">
       <TabsList className="bg-transparent p-0 h-auto border-b border-border rounded-none w-full justify-start gap-1 flex-wrap">
@@ -49,17 +36,17 @@ export function StockEditTabs({
 
       <StockEditMakeupTab {...makeupTabProps} />
       <TabsContent value="images" className="mt-3">
-        <StockImagesTab {...imagesTabProps} />
+        <StockImagesTab />
       </TabsContent>
-      <StockEditSeoTab {...tabProps} />
-      <StockEditSupplierTab {...tabProps} />
-      <StockEditLevelsTab {...tabProps} />
-      <StockEditCostTab {...tabProps} />
-      <StockEditSellingTab {...tabProps} />
-      <StockEditFlagsTab {...flagsTabProps} />
-      <StockEditNotesTab {...tabProps} />
-      <StockEditDetailsTab {...tabProps} />
-      <StockEditKitsTab {...tabProps} />
+      <StockEditSeoTab />
+      <StockEditSupplierTab />
+      <StockEditLevelsTab />
+      <StockEditCostTab />
+      <StockEditSellingTab />
+      <StockEditFlagsTab />
+      <StockEditNotesTab />
+      <StockEditDetailsTab />
+      <StockEditKitsTab />
     </Tabs>
   );
 }

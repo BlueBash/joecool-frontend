@@ -2,8 +2,8 @@ import { getRouteApi, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { FormProvider } from "react-hook-form";
 import { Trash2, Save, Plus } from "lucide-react";
-import { useTxns } from "@/store";
 import { EditScreen, EditCard } from "@/components/edit-screen";
+import { FormDateField } from "@/components/form";
 import { Field, FormGrid } from "@/components/form-primitives";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,8 +24,7 @@ const fmt = (n: number) => new Intl.NumberFormat("en-GB", { style: "currency", c
 export function TransactionEditPage() {
   const { id } = routeApi.useParams();
   const nav = useNavigate();
-  const { items, update, remove } = useTxns();
-  const item = items.find(i => i.id === id);
+  const item = undefined;
 
   const form = useEntityForm<TransactionFormValues>({
     schema: TransactionFormSchema,
@@ -38,9 +37,8 @@ export function TransactionEditPage() {
   const draft = watch();
 
   const deleteConfirm = useDeleteConfirm<{ id: string }>({
-    onConfirm: async ({ id }) => {
-      remove(id);
-      toast.success("Removed");
+    onConfirm: async () => {
+      toast.info("Transactions API is not connected yet.");
       nav({ to: "/transactions" });
     },
   });
@@ -83,10 +81,8 @@ export function TransactionEditPage() {
   const rmAlloc = (lid: string) => setAllocs(allocs.filter(a => a.id !== lid));
 
   const save = handleSubmit(
-    (values) => {
-      update(item.id, values);
-      toast.success("Transaction saved");
-      nav({ to: "/transactions" });
+    () => {
+      toast.info("Transactions API is not connected yet.");
     },
     (errors) => {
       toast.error(firstFormErrorMessage(errors) ?? "Please fix the highlighted fields");
@@ -97,7 +93,7 @@ export function TransactionEditPage() {
       title: "Delete transaction",
       entityName: draft.refMain,
       entityType: "transaction",
-      meta: { id: item.id },
+      meta: { id },
     });
   };
 
@@ -139,9 +135,9 @@ export function TransactionEditPage() {
           </Field>
           <Field label="Addr Code"><Input value={draft.addrCode} onChange={e => set("addrCode", e.target.value)} className="h-8 font-mono" /></Field>
           <Field label="Addr Name" className="md:col-span-2"><Input value={draft.addrName} onChange={e => set("addrName", e.target.value)} className="h-8" /></Field>
-          <Field label="Date"><Input type="date" value={draft.date} onChange={e => set("date", e.target.value)} className="h-8" /></Field>
-          <Field label="Delivery Date"><Input type="date" value={draft.delvDate ?? ""} onChange={e => set("delvDate", e.target.value)} className="h-8" /></Field>
-          <Field label="Due Date"><Input type="date" value={draft.dueDate ?? ""} onChange={e => set("dueDate", e.target.value)} className="h-8" /></Field>
+          <FormDateField<TransactionFormValues> name="date" label="Date" />
+          <FormDateField<TransactionFormValues> name="delvDate" label="Delivery Date" />
+          <FormDateField<TransactionFormValues> name="dueDate" label="Due Date" />
           <Field label="Tran Type">
             <select value={draft.tranType ?? "Sale"} onChange={e => set("tranType", e.target.value as TranType)} className="h-8 px-2 rounded border border-border bg-background text-[13px]">
               <option>Sale</option><option>Purchase</option><option>Refund</option><option>Adjustment</option>

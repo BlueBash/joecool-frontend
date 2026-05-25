@@ -4,7 +4,7 @@ export type SettingsSection = {
   slug: string;
   resourceKey: string;
   label: string;
-  /** Mock-store key for sidebar counts (`useSettings` seed). Defaults to `slug`. */
+  /** Optional key when section slug differs from resource scope (legacy). */
   countKey?: string;
 };
 

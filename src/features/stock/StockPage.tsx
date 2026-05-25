@@ -1,34 +1,21 @@
 import { useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
-import { useForm, type Resolver } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { Plus, Download, Zap, Loader2 } from "lucide-react";
+import { Plus, Loader2 } from "lucide-react";
 import { stocks } from "@/api/stocks";
 import type { ApiError } from "@/api/_client";
 import { PageHeader, CopyableCode } from "@/components/app-shell";
 import { DataTable, Toolbar, TableSearch, type Column } from "@/components/data-table";
 import { Pill } from "@/components/pill";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { ColumnPicker, type ColumnDef } from "@/components/column-picker";
 import { PaginationBar } from "@/components/pagination-bar";
 import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog";
 import { RowActions, EditLink, DeleteButton } from "@/components/row-actions";
 import { useDeleteConfirm } from "@/hooks/use-delete-confirm";
 import { toast } from "sonner";
+import { formatApiDateForDisplay } from "@/lib/dates";
 import type { StockItem } from "@/lib/types";
-import { firstFormErrorMessage } from "@/lib/form";
 import { useStockDirectory } from "./hooks";
-import { stockItemToPayload } from "./map-stock";
-import { QuickStockFormSchema, type QuickStockFormValues } from "./stock-form-schema";
-
-type AddStockHandler = (item: StockItem) => void;
-
-interface QuickAddStockProps {
-  onAdd: AddStockHandler;
-  onCancel: () => void;
-  isSaving: boolean;
-}
 
 const ALL_COLS = [
   { key: "code", label: "Code", locked: true },
@@ -49,20 +36,10 @@ function StockListing() {
   const nav = useNavigate();
   const [q, setQ] = useState("");
   const [visible, setVisible] = useState<Set<string>>(new Set(ALL_COLS.map((c) => c.key)));
-  const [adding, setAdding] = useState(false);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
   const directory = useStockDirectory({ page, pageSize, search: q });
-
-  const createStock = stocks.hooks.useCreate({
-    onSuccess: (row) => {
-      toast.success("Stock created");
-      setAdding(false);
-      nav({ to: "/stock/$id", params: { id: String(row.id) } });
-    },
-    onError: (err: ApiError) => toast.error(err.message),
-  });
 
   const deleteStock = stocks.hooks.useDelete({
     onSuccess: () => toast.success("Stock removed"),
@@ -140,7 +117,7 @@ function StockListing() {
       align: "right" as const,
       sortValue: (r: StockItem) => r.introDate,
       cell: (r: StockItem) => (
-        <span className="text-muted-foreground tabular-nums">{r.introDate}</span>
+        <span className="text-muted-foreground tabular-nums">{formatApiDateForDisplay(r.introDate) || r.introDate}</span>
       ),
     },
     {
@@ -190,8 +167,6 @@ function StockListing() {
     },
   ] satisfies Column<StockItem>[];
 
-  const isSaving = createStock.isPending;
-
   return (
     <div>
       <DeleteConfirmDialog state={deleteConfirm} />
@@ -200,17 +175,9 @@ function StockListing() {
         description={`${attentionCount} need attention`}
         actions={
           <>
-            <Button variant="outline" size="sm" className="h-8 gap-1.5">
+            {/* <Button variant="outline" size="sm" className="h-8 gap-1.5">
               <Download className="h-3.5 w-3.5" /> Export
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-8 gap-1.5"
-              onClick={() => setAdding((v) => !v)}
-            >
-              <Zap className="h-3.5 w-3.5" /> Quick Add
-            </Button>
+            </Button> */}
             <Button
               size="sm"
               className="h-8 gap-1.5"
@@ -254,15 +221,6 @@ function StockListing() {
           <DataTable
             rows={directory.items}
             columns={columns}
-            quickAddRow={
-              adding ? (
-                <QuickAddStock
-                  onAdd={(item) => createStock.mutate(stockItemToPayload(item))}
-                  onCancel={() => setAdding(false)}
-                  isSaving={isSaving}
-                />
-              ) : undefined
-            }
             onRowClick={(r) => nav({ to: "/stock/$id", params: { id: r.id } })}
             emptyState={q ? "No stock matches your search." : "No stock items yet."}
           />
@@ -279,54 +237,5 @@ function StockListing() {
         </div>
       )}
     </div>
-  );
-}
-
-function QuickAddStock({ onAdd, onCancel, isSaving }: QuickAddStockProps) {
-  const {
-    register,
-    handleSubmit,
-    formState: { isSubmitting },
-  } = useForm<QuickStockFormValues>({
-    resolver: zodResolver(QuickStockFormSchema) as Resolver<QuickStockFormValues>,
-    defaultValues: { code: "", title: "", category: "", onHand: undefined },
-    mode: "onTouched",
-  });
-  const busy = isSaving || isSubmitting;
-  const submit = handleSubmit(
-    (values) => {
-      const onHand = values.onHand ?? 0;
-      onAdd({
-        id: "",
-        code: values.code.toUpperCase(),
-        title: values.title,
-        category: values.category || "—",
-        onHand,
-        reorderLevel: 5,
-        color: "—",
-        introDate: new Date().toISOString().slice(0, 10),
-        costPrice: 0,
-        sellingPrice: 0,
-        status: onHand === 0 ? "out" : "active",
-        imageHue: Math.floor(Math.random() * 360),
-        flags: [],
-      });
-    },
-    (errors) => toast.error(firstFormErrorMessage(errors) ?? "Code and Title are required"),
-  );
-  return (
-    <form className="flex items-center gap-2 px-3 py-1.5" onSubmit={submit} noValidate>
-      <Plus className="h-3.5 w-3.5 text-muted-foreground" />
-      <Input autoFocus placeholder="Code" className="h-7 w-28 text-[13px] font-mono" disabled={busy} {...register("code")} />
-      <Input placeholder="Title" className="h-7 flex-1 text-[13px]" disabled={busy} {...register("title")} />
-      <Input placeholder="Category" className="h-7 w-32 text-[13px]" disabled={busy} {...register("category")} />
-      <Input placeholder="On Hand" type="number" className="h-7 w-24 text-[13px] text-right tabular-nums" disabled={busy} {...register("onHand", { valueAsNumber: true })} />
-      <Button type="submit" size="sm" className="h-7" disabled={busy}>
-        {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Add"}
-      </Button>
-      <Button type="button" size="sm" variant="ghost" className="h-7" onClick={onCancel} disabled={busy}>
-        Cancel
-      </Button>
-    </form>
   );
 }

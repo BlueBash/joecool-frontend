@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { displayToApiDate, INVALID_DATE_MESSAGE, isValidApiDate } from "@/lib/dates";
 
 /** Trimmed non-empty string. */
 export const requiredString = (message: string) => z.string().trim().min(1, message);
@@ -38,3 +39,23 @@ export const requiredPositiveNumber = (message: string) =>
 
 /** Coerce checkbox / switch to boolean. */
 export const booleanField = z.preprocess((v) => Boolean(v), z.boolean());
+
+/** Optional YYYY-MM-DD; empty input → undefined. */
+export const optionalApiDate = z
+  .union([z.string(), z.literal(""), z.null(), z.undefined()])
+  .transform((v) => {
+    if (v == null || String(v).trim() === "") return undefined;
+    const s = String(v).trim();
+    const api = displayToApiDate(s) ?? (isValidApiDate(s) ? s : null);
+    return api ?? undefined;
+  })
+  .pipe(z.union([z.literal(undefined), z.string().refine(isValidApiDate, INVALID_DATE_MESSAGE)]));
+
+/** Required YYYY-MM-DD. */
+export const requiredApiDate = (message = INVALID_DATE_MESSAGE) =>
+  z
+    .string()
+    .trim()
+    .min(1, message)
+    .refine((v) => isValidApiDate(v) || displayToApiDate(v) != null, message)
+    .transform((v) => displayToApiDate(v) ?? v);

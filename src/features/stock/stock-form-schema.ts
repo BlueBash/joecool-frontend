@@ -2,12 +2,22 @@ import { z } from "zod";
 import type { StockItem } from "@/lib/types";
 import { optionalNumber, optionalString, requiredString } from "@/lib/form";
 
+function hasStockTitle(data: {
+  title?: string;
+  editedTitle?: string;
+  generatedTitle?: string;
+}): boolean {
+  return [data.title, data.editedTitle, data.generatedTitle].some((v) => (v?.trim() ?? "") !== "");
+}
+
 /** Client validation for stock edit/create — required fields; passthrough for full `StockItem` shape. */
 export const StockFormSchema = z
   .object({
     id: z.string(),
     code: requiredString("Code is required"),
-    title: requiredString("Title is required"),
+    title: z.string(),
+    editedTitle: z.string().optional(),
+    generatedTitle: z.string().optional(),
     category: z.string(),
     onHand: optionalNumber,
     reorderLevel: optionalNumber,
@@ -21,15 +31,15 @@ export const StockFormSchema = z
     flagCodes: z.record(z.string(), z.boolean()).optional(),
     notes: optionalString,
   })
-  .passthrough() as z.ZodType<StockItem, import("react-hook-form").FieldValues>;
+  .passthrough()
+  .superRefine((data, ctx) => {
+    if (!hasStockTitle(data)) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Title is required",
+        path: ["editedTitle"],
+      });
+    }
+  }) as z.ZodType<StockItem, import("react-hook-form").FieldValues>;
 
 export type StockFormValues = z.infer<typeof StockFormSchema>;
-
-export const QuickStockFormSchema = z.object({
-  code: requiredString("Code is required"),
-  title: requiredString("Title is required"),
-  category: z.string().optional(),
-  onHand: z.coerce.number().optional(),
-});
-
-export type QuickStockFormValues = z.infer<typeof QuickStockFormSchema>;

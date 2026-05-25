@@ -19,6 +19,7 @@ import type {
 export const STOCK_LIST_INCLUDE =
   "category,colour,display,selection,gender,assortment,stock_buyer,cost_price";
 
+/** Must match `StocksController#scope_includes` — do not add `packaging` until StockSerializer exposes it. */
 export const STOCK_DETAIL_INCLUDE =
   "display,collection,selection,gender,assortment,joe_online_range,unit,vat_rate_code,tariff_code,stock_buyer,category,blurbs,notes,cost_price,dimension_info,fitting_info,show_kit_items,country_of_origin,manu_country_of_origin,colour";
 

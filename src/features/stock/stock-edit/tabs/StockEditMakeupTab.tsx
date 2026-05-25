@@ -1,281 +1,263 @@
 import { Plus, Trash2 } from "lucide-react";
+import { Controller, useFieldArray, useFormContext } from "react-hook-form";
 import { ReferenceField } from "@/components/reference-field";
+import {
+  RING_SIZE_REFERENCE_DISPLAY,
+  STOCK_PACKAGING_REFERENCE_DISPLAY,
+} from "@/lib/reference-display";
 import { ReferenceKlass } from "@/lib/reference-registry";
 import type { StockEditMakeupTabProps } from "../types";
 import { TabsContent } from "@/components/ui/tabs";
 import { EditCard } from "@/components/edit-screen";
 import { Field, FormGrid } from "@/components/form-primitives";
-import { Input } from "@/components/ui/input";
+import {
+  FormNumberField,
+  FormReferenceField,
+  FormTextareaField,
+  FormTextField,
+} from "@/components/form";
 import { Button } from "@/components/ui/button";
+import type { StockFormValues } from "../../stock-form-schema";
+import { refId } from "../utils";
 import { STOCK_FIELD_CLASS } from "../field-classes";
 
-export function StockEditMakeupTab(props: StockEditMakeupTabProps) {
-  const { draft, set, bindRef, materials, setMaterial, addMaterial, removeMaterial, onGenerateBarcodes } =
-    props;
+export function StockEditMakeupTab({ onGenerateBarcodes }: StockEditMakeupTabProps) {
   const { TXT, NUM, MONO } = STOCK_FIELD_CLASS;
+  const { control, setValue, watch } = useFormContext<StockFormValues>();
+  const displayName = watch("displayName");
+  const { fields, append, remove } = useFieldArray({ control, name: "materials" });
 
   return (
     <TabsContent value="makeup" className="mt-3">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-              <div className="lg:col-span-2">
-                <EditCard title="Description">
-                  <FormGrid cols={2}>
-                    <ReferenceField
-                      label="Category"
-                      klass={ReferenceKlass.Category}
-                      value={draft.categoryId ?? null}
-                      displayLabel={draft.category}
-                      placeholder="Search categories…"
-                      onChange={bindRef("categoryId", "category")}
-                    />
-                    <Field label="Category Code">
-                      <Input
-                        value={draft.categoryCode ?? ""}
-                        onChange={(e) => set("categoryCode", e.target.value)}
-                        className={MONO}
-                      />
-                    </Field>
-                    <ReferenceField
-                      label="Color"
-                      klass={ReferenceKlass.Colour}
-                      value={draft.colourId ?? null}
-                      displayLabel={draft.color}
-                      placeholder="Search colours…"
-                      onChange={bindRef("colourId", "color")}
-                    />
-                    <Field label="Color Code">
-                      <Input
-                        value={draft.colorCode ?? ""}
-                        onChange={(e) => set("colorCode", e.target.value)}
-                        className={MONO}
-                      />
-                    </Field>
-                    <ReferenceField
-                      label="Display"
-                      klass={ReferenceKlass.Display}
-                      value={draft.displayId ?? null}
-                      displayLabel={draft.displayName}
-                      placeholder="Search displays…"
-                      onChange={(id, opt) => {
-                        bindRef("displayId", "displayName")(id, opt);
-                        if (opt?.code) set("displayCode", opt.code);
-                      }}
-                    />
-                    <Field label="Display Code">
-                      <Input
-                        value={draft.displayCode ?? ""}
-                        onChange={(e) => set("displayCode", e.target.value)}
-                        className={MONO}
-                      />
-                    </Field>
-                    <Field label="Cost">
-                      <Input
-                        type="number"
-                        step="0.01"
-                        value={draft.cost ?? draft.costPrice}
-                        onChange={(e) => set("cost", Number(e.target.value))}
-                        className={NUM}
-                      />
-                    </Field>
-                    <ReferenceField
-                      label="Ring size"
-                      klass={ReferenceKlass.RingSize}
-                      value={draft.size ?? null}
-                      displayLabel={draft.size}
-                      placeholder="Search sizes…"
-                      onChange={(id, opt) =>
-                        set("size", opt?.name ?? (id != null ? String(id) : ""))
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div className="lg:col-span-2">
+          <EditCard title="Description">
+            <FormGrid cols={2}>
+              <FormReferenceField<StockFormValues>
+                name="categoryId"
+                labelKey="category"
+                label="Category"
+                klass={ReferenceKlass.Category}
+                placeholder="Search categories…"
+              />
+              <FormReferenceField<StockFormValues>
+                name="colourId"
+                labelKey="color"
+                label="Color"
+                klass={ReferenceKlass.Colour}
+                placeholder="Search colours…"
+              />
+              <Controller
+                control={control}
+                name="displayId"
+                render={({ field }) => (
+                  <ReferenceField
+                    label="Display"
+                    klass={ReferenceKlass.Display}
+                    value={field.value ?? null}
+                    displayLabel={displayName}
+                    placeholder="Search displays…"
+                    onChange={(id, opt) => {
+                      field.onChange(refId(id));
+                      if (opt) {
+                        setValue("displayName", opt.name, { shouldDirty: true });
+                        if (opt.code) setValue("displayCode", opt.code, { shouldDirty: true });
+                        const displayCost =
+                          opt.cost != null && opt.cost !== "" ? Number(opt.cost) : undefined;
+                        if (displayCost != null && Number.isFinite(displayCost)) {
+                          setValue("cost", displayCost, { shouldDirty: true });
+                        }
+                      } else if (id == null || id === "") {
+                        setValue("displayName", "", { shouldDirty: true });
+                        setValue("displayCode", "", { shouldDirty: true });
+                        setValue("cost", undefined, { shouldDirty: true });
                       }
-                    />
-                    <Field label="Unique Description" className="md:col-span-2">
-                      <Input
-                        value={draft.uniqueDescription ?? ""}
-                        onChange={(e) => set("uniqueDescription", e.target.value)}
-                        className={TXT}
-                        placeholder="e.g., woven and knotted with tie string"
-                      />
-                    </Field>
-                  </FormGrid>
-                </EditCard>
+                    }}
+                  />
+                )}
+              />
+              <FormNumberField<StockFormValues>
+                name="cost"
+                label="Display Cost"
+                step="0.01"
+                disabled={true}
+                readOnly={true}
+                inputClassName={NUM}
+              />
+              <FormReferenceField<StockFormValues>
+                name="ringSizeId"
+                labelKey="size"
+                label="Ring size"
+                klass={ReferenceKlass.RingSize}
+                displayConfig={RING_SIZE_REFERENCE_DISPLAY}
+                placeholder="Search sizes…"
+              />
+              <FormTextareaField<StockFormValues>
+                name="uniqueDescription"
+                label="Unique Description"
+                placeholder="e.g., woven and knotted with tie string"
+                rows={4}
+                minHeightClass=""
+                className="[&_textarea]:mt-2"
+              />
+            </FormGrid>
+          </EditCard>
 
-                <EditCard title="Product Details">
-                  <FormGrid cols={2}>
-                    <ReferenceField
-                      label="Assortment"
-                      klass={ReferenceKlass.Assortment}
-                      value={draft.assortmentId ?? null}
-                      displayLabel={draft.assortment}
-                      placeholder="Search…"
-                      onChange={bindRef("assortmentId", "assortment")}
-                    />
-                    <ReferenceField
-                      label="Collection"
-                      klass={ReferenceKlass.Collection}
-                      value={draft.collectionId ?? null}
-                      displayLabel={draft.collection}
-                      placeholder="Search…"
-                      onChange={bindRef("collectionId", "collection")}
-                    />
-                    <ReferenceField
-                      label="Selections"
-                      klass={ReferenceKlass.Selection}
-                      value={draft.selectionId ?? null}
-                      displayLabel={draft.selections}
-                      placeholder="Search…"
-                      onChange={bindRef("selectionId", "selections")}
-                    />
-                    <ReferenceField
-                      label="Packaging"
-                      klass={ReferenceKlass.Packaging}
-                      value={draft.packagingId ?? null}
-                      displayLabel={draft.packaging}
-                      placeholder="Search…"
-                      onChange={bindRef("packagingId", "packaging")}
-                    />
-                    <ReferenceField
-                      label="Gender"
-                      klass={ReferenceKlass.TargetGender}
-                      value={draft.genderId ?? null}
-                      displayLabel={draft.gender}
-                      placeholder="Search…"
-                      onChange={bindRef("genderId", "gender")}
-                    />
-                    <Field label="Unchanged">
-                      <Input
-                        value={draft.unchanged ?? ""}
-                        onChange={(e) => set("unchanged", e.target.value)}
-                        className={TXT}
-                      />
-                    </Field>
-                    <ReferenceField
-                      label="Units"
-                      klass={ReferenceKlass.Unit}
-                      value={draft.unitId ?? null}
-                      displayLabel={draft.units}
-                      placeholder="Search…"
-                      onChange={bindRef("unitId", "units")}
-                    />
-                    <ReferenceField
-                      label="Item Tariff"
-                      klass={ReferenceKlass.CustomTarrifCode}
-                      value={draft.tariffCodeId ?? null}
-                      displayLabel={draft.itemTariff}
-                      placeholder="Search…"
-                      onChange={bindRef("tariffCodeId", "itemTariff")}
-                    />
-                    <ReferenceField
-                      label="VAT Rate"
-                      klass={ReferenceKlass.VatRateCode}
-                      value={draft.vatRateCodeId ?? null}
-                      displayLabel={draft.vatRate}
-                      placeholder="Search…"
-                      onChange={bindRef("vatRateCodeId", "vatRate")}
-                    />
-                    <Field label="Category Tariff">
-                      <Input
-                        value={draft.categoryTariff ?? ""}
-                        onChange={(e) => set("categoryTariff", e.target.value)}
-                        className={TXT}
-                      />
-                    </Field>
-                    <Field label="Front Location">
-                      <Input
-                        value={draft.frontLocation ?? "A"}
-                        onChange={(e) => set("frontLocation", e.target.value)}
-                        className={TXT}
-                      />
-                    </Field>
-                    <Field label="Back Location">
-                      <Input
-                        value={draft.backLocation ?? "A"}
-                        onChange={(e) => set("backLocation", e.target.value)}
-                        className={TXT}
-                      />
-                    </Field>
-                    <Field label="Catalogue Location" className="md:col-span-2">
-                      <Input
-                        value={draft.catalogueLocation ?? ""}
-                        onChange={(e) => set("catalogueLocation", e.target.value)}
-                        className={TXT}
-                      />
-                    </Field>
-                  </FormGrid>
-                </EditCard>
-              </div>
+          <EditCard title="Product Details">
+            <FormGrid cols={2}>
+              <FormReferenceField<StockFormValues>
+                name="assortmentId"
+                labelKey="assortment"
+                label="Assortment"
+                klass={ReferenceKlass.Assortment}
+                placeholder="Search…"
+              />
+              <FormReferenceField<StockFormValues>
+                name="collectionId"
+                labelKey="collection"
+                label="Collection"
+                klass={ReferenceKlass.Collection}
+                placeholder="Search…"
+              />
+              <FormReferenceField<StockFormValues>
+                name="selectionId"
+                labelKey="selections"
+                label="Selections"
+                klass={ReferenceKlass.Selection}
+                placeholder="Search…"
+              />
+              <FormReferenceField<StockFormValues>
+                name="packagingId"
+                labelKey="packaging"
+                label="Packaging"
+                klass={ReferenceKlass.Stock}
+                displayConfig={STOCK_PACKAGING_REFERENCE_DISPLAY}
+                placeholder="Search packaging stock…"
+              />
+              <FormReferenceField<StockFormValues>
+                name="genderId"
+                labelKey="gender"
+                label="Gender"
+                klass={ReferenceKlass.TargetGender}
+                placeholder="Search…"
+              />
+              <FormTextField<StockFormValues>
+                name="unchanged"
+                label="Unchanged"
+                inputClassName={TXT}
+              />
+              <FormReferenceField<StockFormValues>
+                name="unitId"
+                labelKey="units"
+                label="Units"
+                klass={ReferenceKlass.Unit}
+                placeholder="Search…"
+              />
+              <FormReferenceField<StockFormValues>
+                name="tariffCodeId"
+                labelKey="itemTariff"
+                label="Item Tariff"
+                klass={ReferenceKlass.CustomTarrifCode}
+                placeholder="Search…"
+              />
+              <FormReferenceField<StockFormValues>
+                name="vatRateCodeId"
+                labelKey="vatRate"
+                label="VAT Rate"
+                klass={ReferenceKlass.VatRateCode}
+                placeholder="Search…"
+              />
+              <FormTextField<StockFormValues>
+                name="categoryTariff"
+                label="Category Tariff"
+                inputClassName={TXT}
+              />
+              <FormTextField<StockFormValues>
+                name="frontLocation"
+                label="Front Location"
+                inputClassName={TXT}
+              />
+              <FormTextField<StockFormValues>
+                name="backLocation"
+                label="Back Location"
+                inputClassName={TXT}
+              />
+              <FormTextField<StockFormValues>
+                name="catalogueLocation"
+                label="Catalogue Location"
+                inputClassName={TXT}
+                className="md:col-span-2"
+              />
+            </FormGrid>
+          </EditCard>
+        </div>
 
-              <div>
-                <EditCard title="Barcodes">
-                  <FormGrid cols={1}>
-                    <Field label="Pack Barcode">
-                      <Input
-                        value={draft.packBarcode ?? ""}
-                        onChange={(e) => set("packBarcode", e.target.value)}
-                        className={MONO}
-                      />
-                    </Field>
-                    <Field label="Retail Barcode">
-                      <Input
-                        value={draft.retailBarcode ?? ""}
-                        onChange={(e) => set("retailBarcode", e.target.value)}
-                        className={MONO}
-                      />
-                    </Field>
-                  </FormGrid>
-                  <div className="flex justify-end">
-                    <Button
-                      size="sm"
-                      className="mt-3 h-8"
-                      onClick={() => void onGenerateBarcodes()}
-                    >
-                      Get Barcode Numbers
-                    </Button>
-                  </div>
-                </EditCard>
+        <div>
+          <EditCard title="Barcodes">
+            <FormGrid cols={1}>
+              <FormTextField<StockFormValues>
+                name="packBarcode"
+                label="Pack Barcode"
+                mono
+                inputClassName={MONO}
+              />
+              <FormTextField<StockFormValues>
+                name="retailBarcode"
+                label="Retail Barcode"
+                mono
+                inputClassName={MONO}
+              />
+            </FormGrid>
+            <div className="flex justify-end">
+              <Button size="sm" className="mt-3 h-8" onClick={() => void onGenerateBarcodes()}>
+                Get Barcode Numbers
+              </Button>
+            </div>
+          </EditCard>
 
-                <EditCard title="Materials & Compositions">
-                  <div className="space-y-2">
-                    {materials.length === 0 && (
-                      <p className="text-[12.5px] text-muted-foreground">No materials added.</p>
-                    )}
-                    {materials.map((m, i) => (
-                      <div key={i} className="grid grid-cols-[1fr_90px_28px] gap-2 items-end">
-                        <Field label="Material">
-                          <Input
-                            value={m.material}
-                            onChange={(e) => setMaterial(i, { material: e.target.value })}
-                            className={TXT}
-                          />
-                        </Field>
-                        <Field label="Composite %">
-                          <Input
-                            type="number"
-                            value={m.composite}
-                            onChange={(e) => setMaterial(i, { composite: Number(e.target.value) })}
-                            className={NUM}
-                          />
-                        </Field>
-                        <button
-                          onClick={() => removeMaterial(i)}
-                          className="h-8 text-muted-foreground hover:text-destructive"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-                    ))}
-                    <div className="flex justify-end">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-8 gap-1.5 mt-1"
-                        onClick={addMaterial}
-                      >
-                        <Plus className="h-3.5 w-3.5" /> Add Material
-                      </Button>
-                    </div>
-                  </div>
-                </EditCard>
+          <EditCard title="Materials & Compositions">
+            <div className="space-y-2">
+              {fields.length === 0 && (
+                <p className="text-[12.5px] text-muted-foreground">No materials added.</p>
+              )}
+              {fields.map((row, index) => (
+                <div key={row.id} className="grid grid-cols-[1fr_90px_28px] gap-2 items-end">
+                  <FormReferenceField<StockFormValues>
+                    name={`materials.${index}.materialId`}
+                    labelKey={`materials.${index}.material`}
+                    label="Material"
+                    klass={ReferenceKlass.Material}
+                    placeholder="Search materials…"
+                  />
+                  <FormNumberField<StockFormValues>
+                    name={`materials.${index}.composite`}
+                    label="Composite %"
+                    inputClassName={NUM}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => remove(index)}
+                    className="h-8 text-muted-foreground hover:text-destructive"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              ))}
+              <div className="flex justify-end">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-8 gap-1.5 mt-1"
+                  onClick={() => append({ material: "", composite: 0 })}
+                >
+                  <Plus className="h-3.5 w-3.5" /> Add Material
+                </Button>
               </div>
             </div>
+          </EditCard>
+        </div>
+      </div>
     </TabsContent>
   );
 }

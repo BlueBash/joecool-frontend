@@ -12,14 +12,27 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PaginationBar } from "@/components/pagination-bar";
 import { RowActions, EditLink } from "@/components/row-actions";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { toast } from "sonner";
-import type { Address, AddressType } from "@/lib/types";
+import type { Address } from "@/lib/types";
 import { firstFormErrorMessage } from "@/lib/form";
-import { addressRowKey, useAddressDirectory } from "./hooks";
+import { addressRowKey, useAddressDirectory, type AddressKindFilter } from "./hooks";
 import { addressToPayload } from "./map-address";
 import { QuickAddressFormSchema, type QuickAddressFormValues } from "./address-form-schema";
 
 type AddAddressHandler = (address: Address) => void;
+
+const KIND_FILTER_OPTIONS = [
+  { value: "all", label: "All kinds" },
+  { value: "Customer", label: "Customers" },
+  { value: "Supplier", label: "Suppliers" },
+] as const satisfies readonly { value: AddressKindFilter; label: string }[];
 
 interface QuickAddAddressProps {
   onAdd: AddAddressHandler;
@@ -35,10 +48,11 @@ function AddressesListing() {
   const nav = useNavigate();
   const [q, setQ] = useState("");
   const [adding, setAdding] = useState(false);
+  const [kind, setKind] = useState<AddressKindFilter>("all");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
-  const directory = useAddressDirectory({ page, pageSize, search: q });
+  const directory = useAddressDirectory({ page, pageSize, search: q, kind });
 
   const createSupplier = addresses.hooks.useCreateSupplier();
   const createCustomer = addresses.hooks.useCreateCustomer();
@@ -128,6 +142,24 @@ function AddressesListing() {
         }
       />
       <Toolbar>
+        <Select
+          value={kind}
+          onValueChange={(v) => {
+            setKind(v as AddressKindFilter);
+            setPage(1);
+          }}
+        >
+          <SelectTrigger className="h-8 w-[160px] text-[13px]" aria-label="Filter by kind">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {KIND_FILTER_OPTIONS.map((o) => (
+              <SelectItem key={o.value} value={o.value}>
+                {o.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         <TableSearch
           value={q}
           onChange={(v) => {
@@ -178,7 +210,13 @@ function AddressesListing() {
               ) : undefined
             }
             onRowClick={(r) => nav({ to: "/address/$id", params: { id: r.id } })}
-            emptyState={q ? "No addresses match your search." : "No addresses yet."}
+            emptyState={
+              q
+                ? "No addresses match your search."
+                : kind === "all"
+                  ? "No addresses yet."
+                  : `No ${kind === "Supplier" ? "suppliers" : "customers"} yet.`
+            }
           />
           <PaginationBar
             page={directory.meta.page}

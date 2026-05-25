@@ -26,6 +26,8 @@ export const ReferenceKlass = {
   DimensionMeasure: "StockSettings::DimensionMeasure",
   DimensionSpec: "StockSettings::DimensionSpec",
   RingSize: "StockSettings::RingSize",
+  Material: "StockSettings::Material",
+  Range: "StockSettings::Range",
   AmazonTemplate: "StockSettings::AmazonTemplate",
   AmazonProductType: "StockSettings::AmazonProductType",
   AmazonUsItemType: "StockSettings::AmazonUsItemType",
@@ -61,6 +63,8 @@ export const ReferenceKlass = {
   MapAccountant: "MapAccountant",
   CashFlowSection: "CashFlowSection",
   ProfitLossSection: "ProfitLossSection",
+  /** Another stock record used as packaging (see `stock_packaging_id`). */
+  Stock: "Stock",
 } as const;
 
 export type ReferenceKlassName = (typeof ReferenceKlass)[keyof typeof ReferenceKlass];

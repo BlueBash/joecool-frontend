@@ -1,7 +1,7 @@
 import { Link, Outlet, useRouterState } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ChevronRight, PanelLeft, PanelLeftClose } from "lucide-react";
-import { useSettings, useUi } from "@/store";
+import { useUi } from "@/store";
 import { PageHeader } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -165,19 +165,6 @@ function SidebarGroup({
   const isOnPath = activeGroupSlugs.has(group.slug);
   const open = expandedByParent[parentKey] === group.slug;
 
-  const catalogs = useSettings((s) => s.catalogs);
-  const totalCount = useMemo(() => {
-    let n = 0;
-    const walk = (g: SettingsGroup) => {
-      g.sections?.forEach((s) => {
-        n += catalogs[s.countKey ?? s.slug]?.length ?? 0;
-      });
-      g.groups?.forEach(walk);
-    };
-    walk(group);
-    return n;
-  }, [group, catalogs]);
-
   const Icon = group.icon;
   const indent = depth === 0 ? "px-2.5" : depth === 1 ? "pl-6 pr-2.5" : "pl-9 pr-2.5";
 
@@ -295,7 +282,7 @@ function SidebarGroup({
               isOnPath ? "text-primary/80" : "text-muted-foreground",
             )}
           >
-            {totalCount || countSections(group)}
+            {countSections(group)}
           </span>
         </button>
         {open && (

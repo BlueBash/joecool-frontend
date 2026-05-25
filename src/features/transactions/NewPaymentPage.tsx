@@ -3,11 +3,12 @@ import { useEffect, useMemo, useState } from "react";
 import { FormProvider, useForm, useFormContext } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ArrowLeft, ArrowRight, Save, Search } from "lucide-react";
-import { useAddresses, useTxns } from "@/store";
+import { useAddressDirectory } from "@/features/addresses/hooks";
 import { EditScreen, EditCard } from "@/components/edit-screen";
-import { FormNumberField, FormSelectField, FormTextField } from "@/components/form";
+import { FormDateField, FormNumberField, FormSelectField, FormTextField } from "@/components/form";
 import { Field, FormGrid } from "@/components/form-primitives";
 import { firstFormErrorMessage } from "@/lib/form";
+import { todayApiDate } from "@/lib/dates";
 import { PaymentFormSchema, type PaymentFormValues } from "./transaction-form-schema";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,9 +22,12 @@ const fmt = (n: number) => new Intl.NumberFormat("en-GB", { style: "currency", c
 
 export function NewPaymentPage() {
   const nav = useNavigate();
-  const customers = useAddresses((s) => s.items.filter((a) => a.type === "Customer"));
-  const allTxns = useTxns((s) => s.items);
-  const addTxn = useTxns((s) => s.add);
+  const addressDirectory = useAddressDirectory({ page: 1, pageSize: 500 });
+  const customers = useMemo(
+    () => addressDirectory.items.filter((a) => a.type === "Customer"),
+    [addressDirectory.items],
+  );
+  const allTxns: Transaction[] = [];
 
   const [step, setStep] = useState<0 | 1>(0);
 
@@ -50,7 +54,7 @@ export function NewPaymentPage() {
   const form = paymentForm.watch();
 
   useEffect(() => {
-    const today = new Date().toISOString().slice(0, 10);
+    const today = todayApiDate();
     const current = paymentForm.getValues();
     paymentForm.reset({
       ...current,
@@ -105,9 +109,9 @@ export function NewPaymentPage() {
       txnLines: [{ id: `tl_${Date.now()}`, itemCode: "", description: "Payment received", qty: 1, price: form.amount }],
       allocations,
     };
-    addTxn(txn);
-    toast.success(`Payment ${txn.refMain} recorded`);
-    nav({ to: "/transactions/$id", params: { id: txn.id } });
+    void txn;
+    toast.info("Transactions API is not connected yet.");
+    nav({ to: "/transactions" });
   };
 
   return (
@@ -260,19 +264,15 @@ function PaymentFormStep({
     <>
       <EditCard title="Step 1 · Payment Details" description="Enter payment information.">
         <FormGrid cols={3}>
-          <Field label="Payment Ref" required>
-            <Input value={form.refMain} onChange={(e) => set("refMain", e.target.value)} className="h-8 font-mono" />
-          </Field>
-          <Field label="Date">
-            <Input type="date" value={form.date} onChange={(e) => set("date", e.target.value)} className="h-8" />
-          </Field>
-          <Field label="Amount" required>
-            <Input
-              type="number" step="0.01" placeholder="0.00"
-              value={form.amount || ""} onChange={(e) => set("amount", Number(e.target.value) || 0)}
-              className="h-8 text-right tabular-nums"
-            />
-          </Field>
+          <FormTextField<PaymentFormValues> name="refMain" label="Payment Ref" required mono inputClassName="h-8 font-mono" />
+          <FormDateField<PaymentFormValues> name="date" label="Date" />
+          <FormNumberField<PaymentFormValues>
+            name="amount"
+            label="Amount"
+            required
+            step="0.01"
+            inputClassName="h-8 text-right tabular-nums"
+          />
 
           <Field label="Customer" required className="md:col-span-2">
             <div className="relative">
@@ -300,38 +300,30 @@ function PaymentFormStep({
               )}
             </div>
           </Field>
-          <Field label="Currency">
-            <Input value={form.currency} onChange={(e) => set("currency", e.target.value)} className="h-8 font-mono" />
-          </Field>
+          <FormTextField<PaymentFormValues> name="currency" label="Currency" mono inputClassName="h-8 font-mono" />
 
-          <Field label="Pay Method">
-            <select value={form.payMethod} onChange={(e) => set("payMethod", e.target.value)} className="h-8 px-2 rounded border border-border bg-background text-[13px]">
-              <option>BANK</option><option>CASH</option><option>CARD</option><option>CHEQUE</option><option>OTHER</option>
-            </select>
-          </Field>
-          <Field label="Bank Account">
-            <Input value={form.bankAcct} onChange={(e) => set("bankAcct", e.target.value)} className="h-8" />
-          </Field>
-          <Field label="Bank Currency">
-            <Input value={form.bankCurrency} onChange={(e) => set("bankCurrency", e.target.value)} className="h-8 font-mono" />
-          </Field>
+          <FormSelectField<PaymentFormValues> name="payMethod" label="Pay Method">
+            <option value="BANK">BANK</option>
+            <option value="CASH">CASH</option>
+            <option value="CARD">CARD</option>
+            <option value="CHEQUE">CHEQUE</option>
+            <option value="OTHER">OTHER</option>
+          </FormSelectField>
+          <FormTextField<PaymentFormValues> name="bankAcct" label="Bank Account" inputClassName="h-8" />
+          <FormTextField<PaymentFormValues> name="bankCurrency" label="Bank Currency" mono inputClassName="h-8 font-mono" />
 
-          <Field label="Trans Ref">
-            <Input value={form.transRef} onChange={(e) => set("transRef", e.target.value)} className="h-8 font-mono" />
-          </Field>
-          <Field label="Audit Ref">
-            <Input value={form.auditRef} onChange={(e) => set("auditRef", e.target.value)} className="h-8 font-mono" />
-          </Field>
-          <Field label="Tax Period">
-            <Input value={form.taxPeriod} onChange={(e) => set("taxPeriod", e.target.value)} className="h-8 font-mono" />
-          </Field>
+          <FormTextField<PaymentFormValues> name="transRef" label="Trans Ref" mono inputClassName="h-8 font-mono" />
+          <FormTextField<PaymentFormValues> name="auditRef" label="Audit Ref" mono inputClassName="h-8 font-mono" />
+          <FormTextField<PaymentFormValues> name="taxPeriod" label="Tax Period" mono inputClassName="h-8 font-mono" />
 
-          <Field label="Profit Centre">
-            <Input value={form.profCentre} onChange={(e) => set("profCentre", e.target.value)} className="h-8" />
-          </Field>
-          <Field label="Comment" className="md:col-span-2">
-            <Input value={form.comment} onChange={(e) => set("comment", e.target.value)} className="h-8" placeholder="Optional…" />
-          </Field>
+          <FormTextField<PaymentFormValues> name="profCentre" label="Profit Centre" inputClassName="h-8" />
+          <FormTextField<PaymentFormValues>
+            name="comment"
+            label="Comment"
+            className="md:col-span-2"
+            placeholder="Optional…"
+            inputClassName="h-8"
+          />
         </FormGrid>
       </EditCard>
 

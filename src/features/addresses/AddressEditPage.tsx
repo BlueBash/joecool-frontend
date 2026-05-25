@@ -6,6 +6,8 @@ import { addresses } from "@/api/address";
 import type { ApiError } from "@/api/_client";
 import { EditScreen, EditCard } from "@/components/edit-screen";
 import { ReferenceField } from "@/components/reference-field";
+import { FormCheckboxField, FormDateField, FormSelectField, FormTextareaField, FormTextField } from "@/components/form";
+import type { FieldPath } from "react-hook-form";
 import { Field, FormGrid } from "@/components/form-primitives";
 import { ReferenceKlass } from "@/lib/reference-registry";
 import type { ReferenceOption } from "@/lib/reference";
@@ -14,7 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Pill } from "@/components/pill";
 import { toast } from "sonner";
-import type { Address, AddressType, AddressFlags } from "@/lib/types";
+import type { Address, AddressFlags } from "@/lib/types";
 import { applyApiFieldErrors, firstFormErrorMessage, useEntityForm } from "@/lib/form";
 import { AddressFormSchema, type AddressFormValues } from "./address-form-schema";
 import { useAddressDetail } from "./hooks";
@@ -44,8 +46,13 @@ const ADDRESS_EDIT_TABS = [
 
 function blankAddress(): Address {
   return {
-    id: `a_${Date.now()}`, code: "", name: "", type: "Customer",
-    address1: "", town: "", country: "",
+    id: `a_${Date.now()}`,
+    code: "",
+    name: "",
+    type: "Customer",
+    address1: "",
+    town: "",
+    country: "",
   };
 }
 
@@ -117,9 +124,6 @@ export function AddressEditPage() {
   const set = <K extends keyof Address>(k: K, v: Address[K]) =>
     setValue(k as keyof AddressFormValues, v as never, { shouldDirty: true, shouldTouch: true });
 
-  const setFlag = (k: keyof AddressFlags, v: boolean) =>
-    setValue("flags", { ...draft.flags, [k]: v }, { shouldDirty: true, shouldTouch: true });
-
   const bindRef =
     (idKey: keyof Address, labelKey: keyof Address) =>
     (refId: string | number | null, opt?: ReferenceOption) => {
@@ -131,6 +135,8 @@ export function AddressEditPage() {
       );
       if (opt) {
         setValue(labelKey as keyof AddressFormValues, opt.name as never, { shouldDirty: true });
+      } else if (refId == null || refId === "") {
+        setValue(labelKey as keyof AddressFormValues, "" as never, { shouldDirty: true });
       }
     };
 
@@ -166,8 +172,6 @@ export function AddressEditPage() {
     },
   );
 
-  const f = draft.flags ?? {};
-
   return (
     <FormProvider {...form}>
     <EditScreen
@@ -185,15 +189,13 @@ export function AddressEditPage() {
       {/* Header identity strip */}
       <EditCard title="Identity">
         <FormGrid cols={4}>
-          <Field label="Kind">
-            <select value={draft.type} onChange={e => set("type", e.target.value as AddressType)} className="h-8 px-2 rounded border border-border bg-background text-[13px]">
-              <option>Customer</option>
-              <option>Supplier</option>
-            </select>
-          </Field>
-          <Field label="Code" required><Input value={draft.code} onChange={e => set("code", e.target.value)} className="h-8 font-mono" /></Field>
-          <Field label="Name" required><Input value={draft.name} onChange={e => set("name", e.target.value)} className="h-8" /></Field>
-          <Field label="Created"><Input type="date" value={draft.created ?? ""} onChange={e => set("created", e.target.value)} className="h-8" /></Field>
+          <FormSelectField<AddressFormValues> name="type" label="Kind">
+            <option value="Customer">Customer</option>
+            <option value="Supplier">Supplier</option>
+          </FormSelectField>
+          <FormTextField<AddressFormValues> name="code" label="Code" required mono inputClassName="h-8 font-mono" />
+          <FormTextField<AddressFormValues> name="name" label="Name" required inputClassName="h-8" />
+          <FormDateField<AddressFormValues> name="created" label="Created" />
         </FormGrid>
       </EditCard>
 
@@ -309,18 +311,22 @@ export function AddressEditPage() {
               <div className="grid grid-cols-2 gap-x-4 gap-y-2">
                 <div className="flex flex-col gap-2">
                   {FLAGS_LEFT.map(({ key, label }) => (
-                    <label key={key} className="inline-flex items-center gap-2 text-[13px]">
-                      <input type="checkbox" checked={!!f[key]} onChange={e => setFlag(key, e.target.checked)} className="h-3.5 w-3.5" />
-                      {label}
-                    </label>
+                    <FormCheckboxField<AddressFormValues>
+                      key={key}
+                      name={`flags.${key}` as FieldPath<AddressFormValues>}
+                      label={label}
+                      inline
+                    />
                   ))}
                 </div>
                 <div className="flex flex-col gap-2">
                   {FLAGS_RIGHT.map(({ key, label }) => (
-                    <label key={key} className="inline-flex items-center gap-2 text-[13px]">
-                      <input type="checkbox" checked={!!f[key]} onChange={e => setFlag(key, e.target.checked)} className="h-3.5 w-3.5" />
-                      {label}
-                    </label>
+                    <FormCheckboxField<AddressFormValues>
+                      key={key}
+                      name={`flags.${key}` as FieldPath<AddressFormValues>}
+                      label={label}
+                      inline
+                    />
                   ))}
                 </div>
               </div>
@@ -331,11 +337,7 @@ export function AddressEditPage() {
         {/* NOTES */}
         <TabsContent value="notes" className="mt-3">
           <EditCard title="Notes">
-            <textarea
-              className="w-full min-h-[160px] p-2 rounded-md border border-border bg-background text-[13px] resize-y"
-              value={draft.notes ?? ""}
-              onChange={e => set("notes", e.target.value)}
-            />
+            <FormTextareaField<AddressFormValues> name="notes" minHeightClass="min-h-[160px]" />
           </EditCard>
         </TabsContent>
 

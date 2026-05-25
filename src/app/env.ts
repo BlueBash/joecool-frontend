@@ -4,7 +4,6 @@ const RawEnvSchema = z.object({
   VITE_API_ROOT: z.string().url().optional(),
   VITE_API_PROTOCOL: z.string().optional(),
   VITE_API_DOMAIN: z.string().optional(),
-  VITE_ENABLE_MOCKS: z.enum(["true", "false"]).optional(),
 });
 
 const parsed = RawEnvSchema.parse(import.meta.env);
@@ -25,7 +24,6 @@ function resolveApiRoot(): string {
 export const env = {
   apiRoot: resolveApiRoot(),
   apiBase: "/api/v1/platform",
-  enableMocks: parsed.VITE_ENABLE_MOCKS === "true",
   isDev: import.meta.env.DEV,
   isProd: import.meta.env.PROD,
 } as const;

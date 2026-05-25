@@ -24,8 +24,10 @@ import type {
   SellingPriceAttributes,
 } from "./types";
 
-const ADDRESS_DETAIL_INCLUDE =
+export const ADDRESS_LIST_INCLUDE =
   "category,account_manager,agent,area,profit_centre,note,contacts,invoice_env,credit_env,order_currency,order_price,order_cost_code,order_kind,language,label_source,special_invs,vat_kind,vat_rate_code,ship_from,warehouse,ship_method,shipping_charge,pay_term,pay_method,bank_account,delivery_addresses";
+
+const ADDRESS_DETAIL_INCLUDE = ADDRESS_LIST_INCLUDE;
 
 const SPECIAL_PRICE_INCLUDE = "address,stock,currency";
 
@@ -53,13 +55,36 @@ async function fetchAddress(id: ID) {
   return denormalizeJsonApiEnvelope(res.data) as AddressRow;
 }
 
+/** Maps UI list params to platform `GET /addresses` query (`page`, `limit`, `include`, …). */
+function addressListQueryParams(params?: ListParams): Record<string, unknown> | undefined {
+  const merged = mergeListParams({ include: ADDRESS_LIST_INCLUDE }, params);
+  const flat = flattenParams(merged) ?? {};
+  if (flat.pageSize != null && flat.limit == null) {
+    flat.limit = flat.pageSize;
+    delete flat.pageSize;
+  }
+  return Object.keys(flat).length ? flat : undefined;
+}
+
+async function listAddressDirectory(params?: ListParams): Promise<Paginated<AddressRow>> {
+  const merged = mergeListParams({ include: ADDRESS_LIST_INCLUDE }, params);
+  const res = await http.get<ApiEnvelope<unknown[]>>("/addresses", {
+    params: addressListQueryParams(params),
+  });
+  return paginatedFromJsonApi(
+    res.data as { data?: unknown; included?: unknown[]; meta?: JsonApiListMeta },
+    merged,
+    (raw, includedMap) => mapRow(raw, includedMap),
+  );
+}
+
 async function listAddresses(
   type: AddressTypeParam,
   params?: ListParams,
 ): Promise<Paginated<AddressRow>> {
-  const merged = mergeListParams(undefined, params);
+  const merged = mergeListParams({ include: ADDRESS_LIST_INCLUDE }, params);
   const res = await http.get<ApiEnvelope<unknown[]>>("/addresses", {
-    params: { type, ...flattenParams(merged) },
+    params: { type, ...addressListQueryParams(params) },
   });
   return paginatedFromJsonApi(
     res.data as { data?: unknown; included?: unknown[]; meta?: JsonApiListMeta },
@@ -97,6 +122,7 @@ export const addresses = {
   keys: addressKeys,
   api: {
     detail: fetchAddress,
+    listDirectory: listAddressDirectory,
     list: listAddresses,
     listSuppliers,
     update: updateAddress,
@@ -108,6 +134,11 @@ export const addresses = {
       queryOptions<AddressRow, ApiError>({
         queryKey: addressKeys.detail(id),
         queryFn: () => fetchAddress(id),
+      }),
+    listDirectory: (params?: ListParams) =>
+      queryOptions<Paginated<AddressRow>, ApiError>({
+        queryKey: addressKeys.list({ ...params, filters: { scope: "directory" } }),
+        queryFn: () => listAddressDirectory(params),
       }),
     list: (type: AddressTypeParam, params?: ListParams) =>
       queryOptions<Paginated<AddressRow>, ApiError>({
@@ -121,6 +152,18 @@ export const addresses = {
       }),
   },
   hooks: {
+    useListDirectory: (
+      params?: ListParams,
+      opts?: { enabled?: boolean; keepPreviousData?: boolean },
+    ) =>
+      useQuery({
+        queryKey: addressKeys.list({ ...params, filters: { scope: "directory" } }),
+        queryFn: () => listAddressDirectory(params),
+        enabled: opts?.enabled ?? true,
+        placeholderData: opts?.keepPreviousData
+          ? (prev) => prev as Paginated<AddressRow> | undefined
+          : undefined,
+      }),
     useList: (
       type: AddressTypeParam,
       params?: ListParams,

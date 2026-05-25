@@ -19,7 +19,6 @@ export function StockEditPage() {
     isNew,
     detailQuery,
     form,
-    formState,
     draft,
     isDirty,
     isSaving,
@@ -33,17 +32,11 @@ export function StockEditPage() {
     handleGenerateCode,
     save,
     onDelete,
-    existingImages,
-    pendingImages,
-    setPendingImages,
-    materials,
-    setMaterial,
-    addMaterial,
-    removeMaterial,
     onGenerateBarcodes,
-    setFlag,
-    tabProps,
   } = page;
+
+  const existingImages = draft.images ?? [];
+  const pendingImages = draft.pendingImages ?? [];
 
   if (!isNew && detailQuery.isPending) {
     return (
@@ -141,9 +134,7 @@ export function StockEditPage() {
         }
       >
         <StockEditIdentityCard
-          {...tabProps}
           isNew={isNew}
-          codeError={formState.errors.code?.message}
           existingImages={existingImages}
           pendingImages={pendingImages}
           imageHue={draft.imageHue}
@@ -154,23 +145,7 @@ export function StockEditPage() {
           onGenerateCode={() => void handleGenerateCode()}
         />
 
-        <StockEditTabs
-          tabProps={tabProps}
-          makeupTabProps={{
-            ...tabProps,
-            materials,
-            setMaterial,
-            addMaterial,
-            removeMaterial,
-            onGenerateBarcodes,
-          }}
-          flagsTabProps={{ ...tabProps, setFlag }}
-          imagesTabProps={{
-            existingImages,
-            pendingImages,
-            onPendingChange: setPendingImages,
-          }}
-        />
+        <StockEditTabs makeupTabProps={{ onGenerateBarcodes }} />
       </EditScreen>
     </FormProvider>
   );

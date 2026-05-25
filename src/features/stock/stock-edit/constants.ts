@@ -31,5 +31,5 @@ export const STOCK_EDIT_TABS = [
   ["flags", "FlagsSpecials"],
   ["notes", "Notes"],
   ["details", "Details"],
-  ["kits", "Kits"],
+  // ["kits", "Kits"],
 ] as const satisfies readonly (readonly [string, string])[];

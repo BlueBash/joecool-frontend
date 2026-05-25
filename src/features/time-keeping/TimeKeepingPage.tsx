@@ -1,10 +1,12 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { Plus, Save, X, Pencil } from "lucide-react";
-import { useTime, useOperators } from "@/store";
+import { useOperatorDirectory } from "@/features/operators/hooks";
 import { PageHeader } from "@/components/app-shell";
 import { DataTable, Toolbar, TableSearch, type Column } from "@/components/data-table";
+import { DateField } from "@/components/date-field";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { formatApiDateForDisplay, todayApiDate } from "@/lib/dates";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { PaginationBar } from "@/components/pagination-bar";
@@ -38,7 +40,7 @@ const emptyEntry = (): TimeEntry => ({
   id: `te_${Date.now()}`,
   operatorCode: "",
   operatorName: "",
-  date: new Date().toISOString().slice(0, 10),
+  date: todayApiDate(),
   inAt: "",
   outAt: "",
   morningBegin: "",
@@ -52,8 +54,9 @@ const emptyEntry = (): TimeEntry => ({
 });
 
 export function TimeKeepingPage() {
-  const { items, add, update, remove } = useTime();
-  const operators = useOperators(s => s.items);
+  const items: TimeEntry[] = [];
+  const operatorDirectory = useOperatorDirectory({ page: 1, pageSize: 500 });
+  const operators = operatorDirectory.items;
   const [q, setQ] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
@@ -65,9 +68,8 @@ export function TimeKeepingPage() {
   const { page, setPage, pageSize, setPageSize, paged, total } = usePaginated(filtered, 10);
 
   const deleteConfirm = useDeleteConfirm<{ id: string }>({
-    onConfirm: async ({ id }) => {
-      remove(id);
-      toast.success("Removed");
+    onConfirm: async () => {
+      toast.info("Time keeping API is not connected yet.");
     },
   });
 
@@ -83,7 +85,7 @@ export function TimeKeepingPage() {
   const columns = [
     { key: "code", header: "Code", width: "100px", cell: r => <span className="font-mono font-semibold text-[12px]">{r.operatorCode}</span> },
     { key: "name", header: "Name", width: "180px", cell: r => <span>{r.operatorName}</span> },
-    { key: "date", header: "Work Date", width: "120px", sortValue: r => r.date, cell: r => <span className="tabular-nums">{r.date}</span> },
+    { key: "date", header: "Work Date", width: "120px", sortValue: r => r.date, cell: r => <span className="tabular-nums">{formatApiDateForDisplay(r.date) || r.date}</span> },
     { key: "mb", header: "M-Begin", width: "80px", align: "right", cell: r => <span className="tabular-nums">{r.morningBegin || "—"}</span> },
     { key: "me", header: "M-End", width: "80px", align: "right", cell: r => <span className="tabular-nums">{r.morningEnd || "—"}</span> },
     { key: "ab", header: "A-Begin", width: "80px", align: "right", cell: r => <span className="tabular-nums text-muted-foreground">{r.afternoonBegin || "—"}</span> },
@@ -140,7 +142,7 @@ export function TimeKeepingPage() {
               initial={row}
               operators={operators.map(o => ({ code: o.code, name: o.name }))}
               title="Edit Time Entry"
-              onSave={(patch) => { update(row.id, patch); setEditingId(null); toast.success("Saved"); }}
+              onSave={() => { setEditingId(null); toast.info("Time keeping API is not connected yet."); }}
               onCancel={() => setEditingId(null)}
             />
           )}
@@ -154,7 +156,9 @@ export function TimeKeepingPage() {
                   onSave={(patch) => {
                     const entry = { ...emptyEntry(), ...patch, id: `te_${Date.now()}` } as TimeEntry;
                     if (!entry.operatorCode) { toast.error("Select an operator"); return; }
-                    add(entry); setAdding(false); toast.success("Time entry added");
+                    void entry;
+                    setAdding(false);
+                    toast.info("Time keeping API is not connected yet.");
                   }}
                   onCancel={() => setAdding(false)}
                 />
@@ -221,7 +225,9 @@ function InlineTimeForm({
           </select>
         </Field>
         <Field label="Name"><Input value={f.operatorName} onChange={e => set("operatorName", e.target.value)} className="h-8 text-[13px]" /></Field>
-        <Field label="Date"><Input type="date" value={f.date} onChange={e => set("date", e.target.value)} className="h-8 text-[13px]" /></Field>
+        <Field label="Date">
+          <DateField value={f.date} onChange={(v) => set("date", v ?? "")} inputClassName="text-[13px]" />
+        </Field>
         <Field label="Total (hrs)"><Input value={total.toFixed(2)} readOnly className="h-8 text-[13px] bg-muted" /></Field>
       </div>
 

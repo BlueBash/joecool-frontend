@@ -1,9 +1,11 @@
 import { useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { Search, Check, ArrowRight, ArrowLeft, Save } from "lucide-react";
-import { useAddresses, useOrders, useTxns } from "@/store";
+import { useAddressDirectory } from "@/features/addresses/hooks";
 import { EditScreen, EditCard } from "@/components/edit-screen";
+import { DateField } from "@/components/date-field";
 import { Field, FormGrid } from "@/components/form-primitives";
+import { todayApiDate } from "@/lib/dates";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -68,9 +70,12 @@ interface InvoiceFormStepProps {
 
 export function NewInvoicePage() {
   const nav = useNavigate();
-  const customers = useAddresses((s) => s.items.filter((a) => a.type === "Customer"));
-  const allOrders = useOrders((s) => s.items);
-  const addTxn = useTxns((s) => s.add);
+  const addressDirectory = useAddressDirectory({ page: 1, pageSize: 500 });
+  const customers = useMemo(
+    () => addressDirectory.items.filter((a) => a.type === "Customer"),
+    [addressDirectory.items],
+  );
+  const allOrders: Order[] = [];
 
   const [step, setStep] = useState<Step>(0);
   const [customer, setCustomer] = useState<Address | null>(null);
@@ -160,10 +165,9 @@ export function NewInvoicePage() {
           lines={finalLines}
           total={total}
           onBack={goBack}
-          onConfirm={(t) => {
-            addTxn(t);
-            toast.success(`Invoice ${t.refMain} created`);
-            nav({ to: "/transactions/$id", params: { id: t.id } });
+          onConfirm={() => {
+            toast.info("Transactions API is not connected yet.");
+            nav({ to: "/transactions" });
           }}
         />
       )}
@@ -476,7 +480,7 @@ function InvoiceFormStep({
     comment: "",
   });
   useEffect(() => {
-    const today = new Date().toISOString().slice(0, 10);
+    const today = todayApiDate();
     setForm((f) => ({
       ...f,
       refMain: f.refMain || `INV-${String(Date.now()).slice(-5)}`,
@@ -546,13 +550,13 @@ function InvoiceFormStep({
             <Input value={form.currency} onChange={(e) => set("currency", e.target.value)} className="h-8 font-mono" />
           </Field>
           <Field label="Invoice Date">
-            <Input type="date" value={form.date} onChange={(e) => set("date", e.target.value)} className="h-8" />
+            <DateField value={form.date} onChange={(v) => set("date", v ?? "")} className="h-8" />
           </Field>
           <Field label="Delivery Date">
-            <Input type="date" value={form.delvDate} onChange={(e) => set("delvDate", e.target.value)} className="h-8" />
+            <DateField value={form.delvDate} onChange={(v) => set("delvDate", v ?? "")} className="h-8" />
           </Field>
           <Field label="Due Date">
-            <Input type="date" value={form.dueDate} onChange={(e) => set("dueDate", e.target.value)} className="h-8" />
+            <DateField value={form.dueDate} onChange={(v) => set("dueDate", v ?? "")} className="h-8" />
           </Field>
           <Field label="Profit Centre">
             <Input value={form.profCentre} onChange={(e) => set("profCentre", e.target.value)} className="h-8" />

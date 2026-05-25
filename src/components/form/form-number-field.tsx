@@ -15,6 +15,7 @@ export interface FormNumberFieldProps<T extends FieldValues> {
   step?: string | number;
   placeholder?: string;
   disabled?: boolean;
+  readOnly?: boolean;
 }
 
 function FormNumberFieldInner<T extends FieldValues>({
@@ -27,6 +28,7 @@ function FormNumberFieldInner<T extends FieldValues>({
   step,
   placeholder,
   disabled,
+  readOnly,
 }: FormNumberFieldProps<T>) {
   const {
     register,
@@ -42,6 +44,7 @@ function FormNumberFieldInner<T extends FieldValues>({
         step={step}
         placeholder={placeholder}
         disabled={disabled ?? isSubmitting}
+        readOnly={readOnly}
         aria-invalid={!!error}
         aria-describedby={errorId}
         className={cn("h-8 tabular-nums text-[13px]", inputClassName)}

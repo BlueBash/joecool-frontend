@@ -2,7 +2,7 @@ import { memo } from "react";
 import { Controller, useFormContext, type FieldPath, type FieldValues } from "react-hook-form";
 import { ReferenceSelect, type ReferenceSelectProps } from "@/components/reference-select";
 import { Field } from "@/components/form-primitives";
-import type { ReferenceOption } from "@/lib/reference";
+import { referenceLabel, type ReferenceOption } from "@/lib/reference";
 import { FieldError } from "./field-error";
 
 export interface FormReferenceFieldProps<T extends FieldValues>
@@ -54,8 +54,15 @@ function FormReferenceFieldInner<T extends FieldValues>({
             disabled={disabled ?? isSubmitting}
             onChange={(id, opt?: ReferenceOption) => {
               field.onChange(refId(id));
-              if (labelKey && opt) {
-                setValue(labelKey, opt.name as never, { shouldDirty: true });
+              if (!labelKey) return;
+              if (opt) {
+                setValue(
+                  labelKey,
+                  referenceLabel(opt, selectProps.displayConfig) as never,
+                  { shouldDirty: true },
+                );
+              } else if (id == null || id === "") {
+                setValue(labelKey, "" as never, { shouldDirty: true });
               }
             }}
           />

@@ -2,8 +2,9 @@ import { getRouteApi, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { FormProvider } from "react-hook-form";
 import { Trash2, Save, Plus, Printer, Mail } from "lucide-react";
-import { useOrders, useStocks } from "@/store";
+import { useStockDirectory } from "@/features/stock/hooks";
 import { EditScreen, EditCard } from "@/components/edit-screen";
+import { FormDateField } from "@/components/form";
 import { Field, FormGrid } from "@/components/form-primitives";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -34,10 +35,10 @@ const ORDER_EDIT_TABS = [
 export function OrderEditPage() {
   const { id } = routeApi.useParams();
   const nav = useNavigate();
-  const { items, update, remove } = useOrders();
-  const stocks = useStocks(s => s.items);
-  const item = items.find(i => i.id === id);
   const [lineCode, setLineCode] = useState("");
+  const stockDirectory = useStockDirectory({ page: 1, pageSize: 100, search: lineCode || undefined });
+  const stocks = stockDirectory.items;
+  const item = undefined;
 
   const form = useEntityForm<OrderFormValues>({
     schema: OrderFormSchema,
@@ -50,9 +51,8 @@ export function OrderEditPage() {
   const draft = watch();
 
   const deleteConfirm = useDeleteConfirm<{ id: string }>({
-    onConfirm: async ({ id }) => {
-      remove(id);
-      toast.success("Removed");
+    onConfirm: async () => {
+      toast.info("Orders API is not connected yet.");
       nav({ to: "/orders" });
     },
   });
@@ -82,10 +82,8 @@ export function OrderEditPage() {
   };
 
   const save = handleSubmit(
-    (values) => {
-      update(item.id, values);
-      toast.success("Order saved");
-      nav({ to: "/orders" });
+    () => {
+      toast.info("Orders API is not connected yet.");
     },
     (errors) => {
       toast.error(firstFormErrorMessage(errors) ?? "Please fix the highlighted fields");
@@ -96,7 +94,7 @@ export function OrderEditPage() {
       title: "Delete order",
       entityName: draft.code,
       entityType: "order",
-      meta: { id: item.id },
+      meta: { id },
     });
   };
 
@@ -203,17 +201,17 @@ export function OrderEditPage() {
 
           <EditCard title="Dates & Charges">
             <FormGrid cols={4}>
-              <Field label="Date Written"><Input type="date" value={draft.written} onChange={e => set("written", e.target.value)} className={TXT} /></Field>
-              <Field label="Date Lodged"><Input type="date" value={draft.dateLodged ?? ""} onChange={e => set("dateLodged", e.target.value)} className={TXT} /></Field>
-              <Field label="Date Ship"><Input type="date" value={draft.ship} onChange={e => set("ship", e.target.value)} className={TXT} /></Field>
-              <Field label="Date Cancel"><Input type="date" value={draft.cancel} onChange={e => set("cancel", e.target.value)} className={TXT} /></Field>
-              <Field label="Date Expect"><Input type="date" value={draft.dateExpect ?? ""} onChange={e => set("dateExpect", e.target.value)} className={TXT} /></Field>
-              <Field label="Date Delivery First"><Input type="date" value={draft.dateDeliveryFirst ?? ""} onChange={e => set("dateDeliveryFirst", e.target.value)} className={TXT} /></Field>
-              <Field label="Date Delivery Last"><Input type="date" value={draft.dateDeliveryLast ?? ""} onChange={e => set("dateDeliveryLast", e.target.value)} className={TXT} /></Field>
-              <Field label="Date Pickup First"><Input type="date" value={draft.datePickupFirst ?? ""} onChange={e => set("datePickupFirst", e.target.value)} className={TXT} /></Field>
-              <Field label="Date Pickup Last"><Input type="date" value={draft.datePickupLast ?? ""} onChange={e => set("datePickupLast", e.target.value)} className={TXT} /></Field>
-              <Field label="Date Invoice First"><Input type="date" value={draft.dateInvoiceFirst ?? ""} onChange={e => set("dateInvoiceFirst", e.target.value)} className={TXT} /></Field>
-              <Field label="Date Invoice Last"><Input type="date" value={draft.dateInvoiceLast ?? ""} onChange={e => set("dateInvoiceLast", e.target.value)} className={TXT} /></Field>
+              <FormDateField<OrderFormValues> name="written" label="Date Written" inputClassName={TXT} />
+              <FormDateField<OrderFormValues> name="dateLodged" label="Date Lodged" inputClassName={TXT} />
+              <FormDateField<OrderFormValues> name="ship" label="Date Ship" inputClassName={TXT} />
+              <FormDateField<OrderFormValues> name="cancel" label="Date Cancel" inputClassName={TXT} />
+              <FormDateField<OrderFormValues> name="dateExpect" label="Date Expect" inputClassName={TXT} />
+              <FormDateField<OrderFormValues> name="dateDeliveryFirst" label="Date Delivery First" inputClassName={TXT} />
+              <FormDateField<OrderFormValues> name="dateDeliveryLast" label="Date Delivery Last" inputClassName={TXT} />
+              <FormDateField<OrderFormValues> name="datePickupFirst" label="Date Pickup First" inputClassName={TXT} />
+              <FormDateField<OrderFormValues> name="datePickupLast" label="Date Pickup Last" inputClassName={TXT} />
+              <FormDateField<OrderFormValues> name="dateInvoiceFirst" label="Date Invoice First" inputClassName={TXT} />
+              <FormDateField<OrderFormValues> name="dateInvoiceLast" label="Date Invoice Last" inputClassName={TXT} />
               <Field label="Priority">
                 <select value={draft.priority ?? "Normal"} onChange={e => set("priority", e.target.value)} className="h-8 px-2 rounded border border-border bg-background text-[13px]">
                   <option>Low</option><option>Normal</option><option>High</option><option>Urgent</option>

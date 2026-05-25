@@ -3,7 +3,6 @@ import { useMemo, type ReactNode } from "react";
 import {
   PoundSterling, ShoppingCart, Boxes, Users, Building2,
 } from "lucide-react";
-import { useOrders, useTxns } from "@/store";
 import { useStockDirectory } from "@/features/stock/hooks";
 import { useDashboardSummary } from "./hooks";
 import { KpiTile } from "@/components/kpi-tile";
@@ -17,24 +16,22 @@ function fmt(n: number) {
 export function DashboardPage() {
   const summary = useDashboardSummary();
   const recentStockQuery = useStockDirectory({ page: 1, pageSize: 6 });
-  const orders = useOrders((s) => s.items);
-  const txns = useTxns((s) => s.items);
 
-  const kpis = useMemo(() => {
-    const sales = txns.filter(t => t.kind === "Invoice").reduce((sum, t) => sum + t.value, 0);
-    return {
-      sales,
+  const kpis = useMemo(
+    () => ({
+      sales: 0,
       stockCount: summary.summary.stockTotal,
       customers: summary.summary.customerTotal,
       suppliers: summary.summary.supplierTotal,
-      ordersN: orders.length,
-    };
-  }, [txns, summary.summary, orders.length]);
+      ordersN: 0,
+    }),
+    [summary.summary],
+  );
 
   const recentStocks = recentStockQuery.items;
-  const recentOrders = orders.slice(0, 6);
-  const recentInvoices = txns.filter(t => t.kind === "Invoice").slice(0, 6);
-  const recentPayments = txns.filter(t => t.kind === "Payment").slice(0, 6);
+  const recentOrders: { id: string; code: string; addrName: string; status: string }[] = [];
+  const recentInvoices: { id: string; refMain: string; addrName: string; value: number }[] = [];
+  const recentPayments: { id: string; refMain: string; addrName: string; value: number }[] = [];
 
   // 30-day fake sparkline
   const spark = useMemo(() => Array.from({ length: 30 }, (_, i) => 30 + Math.sin(i / 2) * 12 + (i / 3)), []);

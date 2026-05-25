@@ -1,7 +1,6 @@
 import { useNavigate, Outlet, useChildMatches, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { Download, Plus, FileText, Wallet, ChevronDown } from "lucide-react";
-import { useTxns } from "@/store";
 import { PageHeader } from "@/components/app-shell";
 import { DataTable, Toolbar, TableSearch, type Column } from "@/components/data-table";
 import { Pill } from "@/components/pill";
@@ -15,16 +14,13 @@ import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
+import { formatApiDateForDisplay } from "@/lib/dates";
 import type { Transaction } from "@/lib/types";
 
 const fmt = (n: number) =>
   new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP" }).format(n);
 
-const fmtDate = (s: string) => {
-  const d = new Date(s);
-  if (Number.isNaN(d.getTime())) return s;
-  return d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
-};
+const fmtDate = (s: string) => formatApiDateForDisplay(s) || s;
 
 export function TransactionsPage() {
   const hasChild = useChildMatches().length > 0;
@@ -33,9 +29,9 @@ export function TransactionsPage() {
 }
 
 function TxnListing() {
-  const { items, remove } = useTxns();
   const nav = useNavigate();
   const [q, setQ] = useState("");
+  const items: Transaction[] = [];
 
   const filtered = useMemo(
     () =>
@@ -51,9 +47,8 @@ function TxnListing() {
   const { page, setPage, pageSize, setPageSize, paged, total } = usePaginated(filtered, 10);
 
   const deleteConfirm = useDeleteConfirm<{ id: string }>({
-    onConfirm: async ({ id }) => {
-      remove(id);
-      toast.success("Deleted");
+    onConfirm: async () => {
+      toast.info("Transactions API is not connected yet.");
     },
   });
 
