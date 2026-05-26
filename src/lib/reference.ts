@@ -39,24 +39,41 @@ export const STOCK_FLAG_API_KEYS: Record<string, string> = {
   "51": "flag_51_retail_message",
 };
 
-export function stockFlagCodesFromApi(flags: unknown): Record<string, boolean> {
-  if (!flags || typeof flags !== "object") return {};
-  const obj = flags as Record<string, boolean>;
+/** Ensures every known stock flag code is a boolean (never undefined). */
+export function normalizeStockFlagCodes(
+  partial?: Record<string, boolean | null | undefined>,
+): Record<string, boolean> {
   const out: Record<string, boolean> = {};
-  for (const [code, apiKey] of Object.entries(STOCK_FLAG_API_KEYS)) {
-    if (apiKey in obj) out[code] = !!obj[apiKey];
+  for (const code of Object.keys(STOCK_FLAG_API_KEYS)) {
+    out[code] = !!partial?.[code];
   }
   return out;
 }
 
+export function stockFlagCodesFromApi(flags: unknown): Record<string, boolean> {
+  if (!flags || typeof flags !== "object") return normalizeStockFlagCodes({});
+  const obj = flags as Record<string, unknown>;
+  const partial: Record<string, boolean> = {};
+  for (const [code, apiKey] of Object.entries(STOCK_FLAG_API_KEYS)) {
+    if (apiKey in obj) partial[code] = !!obj[apiKey];
+  }
+  return normalizeStockFlagCodes(partial);
+}
+
 export function stockFlagsToApi(flagCodes: Record<string, boolean> | undefined): Record<string, boolean> | undefined {
   if (!flagCodes) return undefined;
+  const normalized = normalizeStockFlagCodes(flagCodes);
   const out: Record<string, boolean> = {};
-  for (const [code, on] of Object.entries(flagCodes)) {
+  for (const [code, on] of Object.entries(normalized)) {
     const key = STOCK_FLAG_API_KEYS[code];
     if (key) out[key] = on;
   }
   return Object.keys(out).length ? out : undefined;
+}
+
+/** Default `flagCodes` for new stock (all keys present; legacy defaults on). */
+export function stockCreateDefaultFlagCodes(): Record<string, boolean> {
+  return { ...normalizeStockFlagCodes({}), ...STOCK_CREATE_DEFAULT_FLAGS };
 }
 
 /** Default flags applied on create (matches legacy defaults). */

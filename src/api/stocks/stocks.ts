@@ -21,7 +21,7 @@ export const STOCK_LIST_INCLUDE =
 
 /** Must match `StocksController#scope_includes` — do not add `packaging` until StockSerializer exposes it. */
 export const STOCK_DETAIL_INCLUDE =
-  "display,collection,selection,gender,assortment,joe_online_range,unit,vat_rate_code,tariff_code,stock_buyer,category,blurbs,notes,cost_price,dimension_info,fitting_info,show_kit_items,country_of_origin,manu_country_of_origin,colour";
+  "display,collection,selection,gender,assortment,joe_online_range,unit,vat_rate_code,tariff_code,stock_buyer,category,blurbs,notes,cost_price,dimension_info,dimension_info.dimension_assortment,dimension_info.dimension_spec,dimension_info.dimension_measure,fitting_info,fitting_info.fitting_assortment,fitting_info.fitting_spec,fitting_info.fitting_measure,show_kit_items,country_of_origin,manu_country_of_origin,colour";
 
 const stocksBase = createJsonApiResource<StockRow, StockWritePayload>(
   ["stocks"],
@@ -71,20 +71,31 @@ async function fetchOrderLevelsInfo(id: ID) {
   return res.data.data;
 }
 
+/** Parses `POST /stocks/fitting_message` and `POST /stocks/dimensions_message` bodies. */
+export function parseStockSettingsMessageResponse(data: unknown): string {
+  if (!data || typeof data !== "object") return "";
+  const root = data as Record<string, unknown>;
+  const legacy = root.message;
+  if (legacy && typeof legacy === "object") {
+    const text = (legacy as Record<string, unknown>).message;
+    if (typeof text === "string") return text;
+  }
+  const attrs = (root.data as Record<string, unknown> | undefined)?.attributes;
+  if (attrs && typeof attrs === "object") {
+    const text = (attrs as Record<string, unknown>).message;
+    if (typeof text === "string") return text;
+  }
+  return "";
+}
+
 async function fetchDimensionsMessage(payload: Record<string, unknown>) {
-  const res = await http.post<{ message?: { message?: string } }>(
-    "/stocks/dimensions_message",
-    payload,
-  );
-  return res.data.message?.message ?? "";
+  const res = await http.post<unknown>("/stocks/dimensions_message", payload);
+  return parseStockSettingsMessageResponse(res.data);
 }
 
 async function fetchFittingMessage(payload: Record<string, unknown>) {
-  const res = await http.post<{ message?: { message?: string } }>(
-    "/stocks/fitting_message",
-    payload,
-  );
-  return res.data.message?.message ?? "";
+  const res = await http.post<unknown>("/stocks/fitting_message", payload);
+  return parseStockSettingsMessageResponse(res.data);
 }
 
 async function saveSellPrices(payload: Record<string, unknown>) {
@@ -151,6 +162,20 @@ export const stocks = {
   },
   hooks: {
     ...stocksBase.hooks,
+    useUpdate: (opts) => {
+      const qc = useQueryClient();
+      return useMutation<StockRow, ApiError, { id: ID; data: StockWritePayload }>({
+        ...opts,
+        mutationFn: ({ id, data }) => stocksBase.api.update(id, data),
+        onSuccess: (...args) => {
+          const [, vars] = args;
+          // PATCH body omits `include`; refetch detail instead of caching a thin row.
+          qc.invalidateQueries({ queryKey: stocksBase.keys.detail(vars.id) });
+          qc.invalidateQueries({ queryKey: stocksBase.keys.lists() });
+          return opts?.onSuccess?.(...args);
+        },
+      });
+    },
     useDetail: (id: ID | null | undefined, opts?: { enabled?: boolean; staleTime?: number }) => {
       const enabled = (opts?.enabled ?? true) && id != null && id !== "new";
       return useQuery({

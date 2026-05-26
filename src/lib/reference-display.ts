@@ -88,3 +88,20 @@ export function referenceSearchText(opt: ReferenceOption, config?: ReferenceDisp
   ) as string[];
   return parts.join(" ").toLowerCase();
 }
+
+/** True when a stored label matches a catalog row (label, code, or name). */
+export function referenceOptionMatchesLabel(
+  opt: ReferenceOption,
+  text: string,
+  config?: ReferenceDisplayConfig,
+): boolean {
+  const t = text.trim();
+  if (!t) return false;
+  if (referenceLabel(opt, config) === t) return true;
+  if (referenceDisplayText(opt, config) === t) return true;
+  const badge = referenceBadgeText(opt, config);
+  if (badge === t) return true;
+  const code = opt.code != null ? String(opt.code).trim() : "";
+  const name = opt.name != null ? String(opt.name).trim() : "";
+  return code === t || name === t;
+}

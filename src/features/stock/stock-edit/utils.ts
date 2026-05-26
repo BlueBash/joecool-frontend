@@ -1,5 +1,5 @@
 import { todayApiDate } from "@/lib/dates";
-import { STOCK_CREATE_DEFAULT_FLAGS } from "@/lib/reference";
+import { stockCreateDefaultFlagCodes } from "@/lib/reference";
 import type { StockItem } from "@/lib/types";
 
 export function blankStock(): StockItem {
@@ -17,7 +17,7 @@ export function blankStock(): StockItem {
     status: "active",
     imageHue: Math.floor(Math.random() * 360),
     flags: [],
-    flagCodes: { ...STOCK_CREATE_DEFAULT_FLAGS },
+    flagCodes: stockCreateDefaultFlagCodes(),
     frontLocation: "A",
     backLocation: "A",
     materials: [],

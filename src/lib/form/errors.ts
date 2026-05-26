@@ -17,10 +17,13 @@ export function applyApiFieldErrors<T extends FieldValues>(
 /** First validation message from a failed handleSubmit callback. */
 export function firstFormErrorMessage(errors: Record<string, unknown>): string | undefined {
   for (const e of Object.values(errors)) {
-    if (e && typeof e === "object" && "message" in e) {
+    if (!e || typeof e !== "object") continue;
+    if ("message" in e) {
       const msg = (e as { message?: unknown }).message;
       if (typeof msg === "string" && msg.length > 0) return msg;
     }
+    const nested = firstFormErrorMessage(e as Record<string, unknown>);
+    if (nested) return nested;
   }
   return undefined;
 }

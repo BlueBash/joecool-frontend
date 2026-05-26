@@ -37,17 +37,19 @@ export function StockEditIdentityCard({
   isGeneratingCode,
   onGenerateCode,
 }: StockEditIdentityCardProps) {
-  const { TXT, MONO } = STOCK_FIELD_CLASS;
+  const { TXT, MONO, READONLY } = STOCK_FIELD_CLASS;
   const {
     register,
+    watch,
     formState: { errors, isSubmitting },
   } = useFormContext<StockFormValues>();
+  const code = watch("code");
   const codeError = errors.code?.message as string | undefined;
   const codeErrorId = codeError ? "code-error" : undefined;
 
   return (
     <EditCard title="Identity">
-      <div className="flex gap-4 items-start mb-4">
+      <div className="flex gap-4 items-start">
         <StockImagePreview
           existingImages={existingImages}
           pendingImages={pendingImages}
@@ -55,10 +57,10 @@ export function StockEditIdentityCard({
         />
         <div className="flex-1 min-w-0">
           <FormGrid cols={4}>
-            <Field
-              label="Code"
-              fieldLabelAction={
-                isNew ? (
+            {isNew ? (
+              <Field
+                label="Code"
+                fieldLabelAction={
                   <StockCodeRulesDropdown
                     codeGenerationParams={codeGenerationParams}
                     setCodeGenerationParams={setCodeGenerationParams}
@@ -66,38 +68,42 @@ export function StockEditIdentityCard({
                     isGenerating={isGeneratingCode}
                     onGenerate={onGenerateCode}
                   />
-                ) : undefined
-              }
-              fieldLabelActionClasses={isNew ? "flex justify-between" : undefined}
-              required
-            >
-              <Input
-                readOnly={!isNew}
-                disabled={isSubmitting}
-                aria-invalid={!!codeError}
-                aria-describedby={codeErrorId}
-                className={cn(MONO, !isNew && "bg-muted")}
-                {...register("code", {
-                  setValueAs: (v) => String(v ?? "").toUpperCase(),
-                })}
+                }
+                fieldLabelActionClasses="flex justify-between"
+                required
+              >
+                <Input
+                  disabled={isSubmitting}
+                  aria-invalid={!!codeError}
+                  aria-describedby={codeErrorId}
+                  className={MONO}
+                  {...register("code", {
+                    setValueAs: (v) => String(v ?? "").toUpperCase(),
+                  })}
+                />
+                <FieldError id={codeErrorId} message={codeError} />
+              </Field>
+            ) : (
+              ""
+            )}
+            {!isNew && (
+              <FormDateField<StockFormValues>
+                name="introDate"
+                label="Intro Date"
+                readOnly
+                inputClassName={TXT}
               />
-              <FieldError id={codeErrorId} message={codeError} />
-            </Field>
-            <FormDateField<StockFormValues>
-              name="introDate"
-              label="Intro Date"
-              inputClassName={TXT}
-            />
+            )}
             <StockEditedTitleField />
             <FormTextField<StockFormValues>
               name="generatedTitle"
               label="Generated Title"
               inputClassName={TXT}
             />
+            {/* <StockInlineCheckbox name="toZoho">TO Zoho</StockInlineCheckbox> */}
           </FormGrid>
         </div>
       </div>
-      <StockInlineCheckbox name="toZoho">TO Zoho</StockInlineCheckbox>
     </EditCard>
   );
 }

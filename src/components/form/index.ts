@@ -6,4 +6,5 @@ export { FormTextareaField } from "./form-textarea-field";
 export { FormSelectField } from "./form-select-field";
 export { FormCheckboxField } from "./form-checkbox-field";
 export { FormReferenceField } from "./form-reference-field";
+export { FormReferenceTextField } from "./form-reference-text-field";
 export { FormDateField } from "./form-date-field";

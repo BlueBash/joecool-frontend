@@ -1,6 +1,7 @@
 import { z } from "zod";
 import type { StockItem } from "@/lib/types";
 import { optionalNumber, optionalString, requiredString } from "@/lib/form";
+import { normalizeStockFlagCodes } from "@/lib/reference";
 
 function hasStockTitle(data: {
   title?: string;
@@ -28,8 +29,13 @@ export const StockFormSchema = z
     status: z.enum(["active", "low", "out", "archived"]),
     imageHue: z.number(),
     flags: z.array(z.string()),
-    flagCodes: z.record(z.string(), z.boolean()).optional(),
+    flagCodes: z.preprocess(
+      (v) =>
+        v == null ? undefined : normalizeStockFlagCodes(v as Record<string, boolean | undefined>),
+      z.record(z.string(), z.boolean()).optional(),
+    ),
     notes: optionalString,
+    supplierNotes: optionalString,
   })
   .passthrough()
   .superRefine((data, ctx) => {

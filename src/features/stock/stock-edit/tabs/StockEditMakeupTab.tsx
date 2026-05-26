@@ -193,7 +193,17 @@ export function StockEditMakeupTab({ onGenerateBarcodes }: StockEditMakeupTabPro
         </div>
 
         <div>
-          <EditCard title="Barcodes">
+          <EditCard
+            title="Barcodes"
+            headerActions={
+              <span
+                className="text-[12px] text-primary flex items-center hover:underline cursor-pointer"
+                onClick={() => void onGenerateBarcodes()}
+              >
+                Get Barcode Numbers
+              </span>
+            }
+          >
             <FormGrid cols={1}>
               <FormTextField<StockFormValues>
                 name="packBarcode"
@@ -208,14 +218,19 @@ export function StockEditMakeupTab({ onGenerateBarcodes }: StockEditMakeupTabPro
                 inputClassName={MONO}
               />
             </FormGrid>
-            <div className="flex justify-end">
-              <Button size="sm" className="mt-3 h-8" onClick={() => void onGenerateBarcodes()}>
-                Get Barcode Numbers
-              </Button>
-            </div>
           </EditCard>
 
-          <EditCard title="Materials & Compositions">
+          <EditCard
+            title="Materials & Compositions"
+            headerActions={
+              <span
+                className="text-[12px] text-primary flex items-center hover:underline cursor-pointer"
+                onClick={() => append({ material: "", composite: 0 })}
+              >
+                <Plus className="h-3.5 w-3.5" /> Add Material
+              </span>
+            }
+          >
             <div className="space-y-2">
               {fields.length === 0 && (
                 <p className="text-[12.5px] text-muted-foreground">No materials added.</p>
@@ -243,17 +258,6 @@ export function StockEditMakeupTab({ onGenerateBarcodes }: StockEditMakeupTabPro
                   </button>
                 </div>
               ))}
-              <div className="flex justify-end">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="h-8 gap-1.5 mt-1"
-                  onClick={() => append({ material: "", composite: 0 })}
-                >
-                  <Plus className="h-3.5 w-3.5" /> Add Material
-                </Button>
-              </div>
             </div>
           </EditCard>
         </div>

@@ -59,15 +59,23 @@ interface EditCardProps {
   description?: string;
   children: ReactNode;
   footer?: ReactNode;
+  headerActions?: ReactNode;
 }
 
-export function EditCard({ title, description, children, footer }: EditCardProps) {
+export function EditCard({ title, description, children, footer, headerActions }: EditCardProps) {
   return (
     <section className="rounded-lg border border-border bg-card mb-4">
-      <header className="px-4 pt-3 pb-2 border-b border-border">
-        <h2 className="text-[13px] font-semibold tracking-tight">{title}</h2>
-        {description && <p className="text-[12px] text-muted-foreground mt-0.5">{description}</p>}
-      </header>
+      <div className="px-4 pt-3 pb-2 border-b border-border">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-[13px] font-semibold tracking-tight">{title}</h2>
+            {description && (
+              <p className="text-[12px] text-muted-foreground mt-0.5">{description}</p>
+            )}
+          </div>
+          {headerActions && <div className="flex items-center gap-2">{headerActions}</div>}
+        </div>
+      </div>
       <div className="p-4">{children}</div>
       {footer && (
         <div className="px-4 py-2.5 border-t border-border bg-muted/30 rounded-b-lg">{footer}</div>

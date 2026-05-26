@@ -23,7 +23,7 @@ export function StockImagePreview({
   return (
     <div
       className={cn(
-        "relative h-[98px] w-[98px] shrink-0 rounded-xl border border-border overflow-hidden bg-muted",
+        "relative h-24 w-24 shrink-0 rounded-xl border border-border overflow-hidden bg-muted",
         onClick && "cursor-pointer",
         className,
       )}

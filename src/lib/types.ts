@@ -50,6 +50,7 @@ export interface StockItem {
   pendingImages?: string[];
   flags: string[];
   notes?: string;
+  supplierNotes?: string;
   // Header
   toZoho?: boolean;
   editedTitle?: string;
@@ -218,12 +219,26 @@ export interface StockItem {
   breadth?: number;
   height?: number;
   a4PackLabels?: number;
+  fittingPackAssortId?: number;
   fittingPackAssort?: string;
+  fittingMeasureId?: number;
   fittingMeasure?: string;
+  fittingSpecId?: number;
   fittingSpec?: string;
+  /** Slot count from selected fitting spec `values` (UI). */
+  fittingSpecSlotCount?: number;
+  /** `fitting_info.no_of_sizes` — keys `size_1` … `size_N` (free-text sizes). */
+  fittingNoOfSizes?: Record<string, string>;
+  dimensionPackId?: number;
   dimensionPack?: string;
+  dimensionMeasureId?: number;
   dimensionMeasure?: string;
+  dimensionSpecId?: number;
   dimensionSpec?: string;
+  /** Slot count from selected dimension spec `values` (UI). */
+  dimensionSpecSlotCount?: number;
+  /** `dimension_info.no_of_dimension` — keys `dimension_1` … `dimension_N` (free-text). */
+  dimensionNoOfDimension?: Record<string, string>;
 }
 
 export type AddressType = "Supplier" | "Customer";

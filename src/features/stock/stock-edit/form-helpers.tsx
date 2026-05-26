@@ -345,11 +345,12 @@ export function StockFlagCodeCheckbox({ code, label }: StockFlagCodeCheckboxProp
     <Controller
       control={control}
       name={name}
+      defaultValue={false}
       render={({ field }) => (
         <label className="flex items-center gap-2 px-2 py-1.5 rounded border border-border hover:bg-accent cursor-pointer text-[13px]">
           <input
             type="checkbox"
-            checked={!!field.value}
+            checked={field.value === true}
             onChange={(e) => field.onChange(e.target.checked)}
             onBlur={field.onBlur}
             disabled={formState.isSubmitting}

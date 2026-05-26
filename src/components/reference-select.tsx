@@ -71,10 +71,11 @@ export function ReferenceSelect({
     }
   }, [value, valueSet, lastSelected]);
 
-  const effectiveDisplayLabel = valueSet ? displayLabel : undefined;
+  const effectiveDisplayLabel =
+    displayLabel != null && String(displayLabel).trim() !== "" ? String(displayLabel) : undefined;
 
   const closedDisplayText = useMemo(() => {
-    if (!valueSet) return "";
+    if (!valueSet) return effectiveDisplayLabel ?? "";
     if (selectedOption) return referenceLabel(selectedOption, displayConfig);
     return effectiveDisplayLabel ?? "";
   }, [selectedOption, effectiveDisplayLabel, displayConfig, valueSet]);
@@ -183,7 +184,7 @@ export function ReferenceSelect({
             {open && isFetching && (
               <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground pointer-events-none" />
             )}
-            {allowClear && valueSet && !disabled && (
+            {allowClear && (valueSet || effectiveDisplayLabel) && !disabled && (
               <button
                 type="button"
                 className="rounded p-1 text-muted-foreground hover:bg-accent"
