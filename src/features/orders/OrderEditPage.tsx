@@ -8,6 +8,7 @@ import { FormDateField } from "@/components/form";
 import { Field, FormGrid } from "@/components/form-primitives";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Pill } from "@/components/pill";
 import { CopyableCode } from "@/components/app-shell";
@@ -161,12 +162,20 @@ export function OrderEditPage() {
                 </Field>
               </FormGrid>
               <div className="mt-3 flex items-center gap-4">
-                <label className="inline-flex items-center gap-2 text-[13px]">
-                  <input type="checkbox" checked={!!draft.confirmed} onChange={e => set("confirmed", e.target.checked)} className="h-3.5 w-3.5" />
+                <label className="inline-flex items-center gap-2 text-[13px] cursor-pointer">
+                  <Checkbox
+                    size="sm"
+                    checked={!!draft.confirmed}
+                    onCheckedChange={(v) => set("confirmed", Boolean(v))}
+                  />
                   Confirmed
                 </label>
-                <label className="inline-flex items-center gap-2 text-[13px]">
-                  <input type="checkbox" checked={!!draft.allowAllocs} onChange={e => set("allowAllocs", e.target.checked)} className="h-3.5 w-3.5" />
+                <label className="inline-flex items-center gap-2 text-[13px] cursor-pointer">
+                  <Checkbox
+                    size="sm"
+                    checked={!!draft.allowAllocs}
+                    onCheckedChange={(v) => set("allowAllocs", Boolean(v))}
+                  />
                   Allow Allocs
                 </label>
               </div>

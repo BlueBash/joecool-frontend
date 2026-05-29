@@ -5,13 +5,8 @@ import {
   useQueryClient,
   type UseMutationOptions,
 } from "@tanstack/react-query";
-import {
-  createJsonApiResource,
-  createResourceKeys,
-  flattenParams,
-  http,
-} from "@/api/_client";
-import type { ApiEnvelope, ID, ListParams } from "@/api/_client";
+import { createJsonApiResource, http } from "@/api/_client";
+import type { ApiEnvelope, ID } from "@/api/_client";
 import type { ApiError } from "@/api/_client/errors";
 import { denormalizeJsonApiEnvelope } from "@/api/_client/json-api";
 import type {
@@ -24,14 +19,7 @@ import type {
 
 export const STOCK_LIST_INCLUDE =
   "category,colour,display,selection,gender,assortment,stock_buyer,cost_price";
-
-/**
- * JSON:API `include` list — relationships only (`StockSerializer`).
- * `selling_prices` and `supplier_data` are serializer *attributes*, not relationships;
- * they are returned on the stock payload without being listed here.
- */
-export const STOCK_DETAIL_INCLUDE =
-  "display,collection,selection,gender,assortment,joe_online_range,unit,vat_rate_code,tariff_code,stock_buyer,category,blurbs,notes,cost_price,dimension_info,dimension_info.dimension_assortment,dimension_info.dimension_spec,dimension_info.dimension_measure,fitting_info,fitting_info.fitting_assortment,fitting_info.fitting_spec,fitting_info.fitting_measure,show_kit_items,country_of_origin,manu_country_of_origin,colour";
+export const STOCK_DETAIL_INCLUDE = "*";
 
 const stocksBase = createJsonApiResource<StockRow, StockWritePayload>(
   ["stocks"],
@@ -57,17 +45,18 @@ async function generateNextCode(params?: GenerateNextCodeParams) {
 }
 
 async function generateBarcode() {
-  const res = await http.get<{ data?: { barcode?: string }; meta?: { message?: string } }>(
-    "/stocks/generate_barcode",
-  );
-  return res.data.data ?? {};
+  const res = await http.get<{
+    data?: { pack_barcode: string; retail_barcode: string   };
+      meta?: { message?: string };
+    }
+  >("/stocks/generate_barcode");
+  return res.data ?? (res.data as unknown as { pack_barcode: string; retail_barcode: string });
 }
 
 async function fetchStockPackagingAmount(params: StockPackagingAmountParams) {
-  const res = await http.get<{ data?: Record<string, unknown> }>(
-    "/stocks/stock_packaging_amount",
-    { params },
-  );
+  const res = await http.get<{ data?: Record<string, unknown> }>("/stocks/stock_packaging_amount", {
+    params,
+  });
   return res.data.data ?? {};
 }
 
@@ -124,10 +113,9 @@ async function fetchGroupedPriceCategories() {
 }
 
 async function fetchDimensionFields(params: { dimension_spec: ID }) {
-  const res = await http.get<{ data?: unknown }>(
-    "/stock/dimension_infos/get_dimension_fields",
-    { params },
-  );
+  const res = await http.get<{ data?: unknown }>("/stock/dimension_infos/get_dimension_fields", {
+    params,
+  });
   return res.data.data ?? res.data;
 }
 
@@ -173,11 +161,7 @@ export const stocks = {
   hooks: {
     ...stocksBase.hooks,
     useUpdate: (
-      opts?: UseMutationOptions<
-        StockRow,
-        ApiError,
-        { id: ID; data: StockWritePayload }
-      >,
+      opts?: UseMutationOptions<StockRow, ApiError, { id: ID; data: StockWritePayload }>,
     ) => {
       const qc = useQueryClient();
       return useMutation<StockRow, ApiError, { id: ID; data: StockWritePayload }>({
@@ -208,10 +192,7 @@ export const stocks = {
         onSuccess: () => qc.invalidateQueries({ queryKey: stocksBase.keys.lists() }),
       });
     },
-    useGenerateNextCode: (
-      params?: GenerateNextCodeParams,
-      opts?: { enabled?: boolean },
-    ) =>
+    useGenerateNextCode: (params?: GenerateNextCodeParams, opts?: { enabled?: boolean }) =>
       useQuery({
         queryKey: stocksBase.keys.actions("generate-next-code", params),
         queryFn: () => generateNextCode(params),
@@ -259,19 +240,13 @@ export const stocks = {
   },
 };
 
-export const stockBlurbs = createJsonApiResource(
-  ["stocks", "blurbs"],
-  "/stock/blurbs",
-  "blurb",
-  { defaultListParams: { include: "stock" } },
-);
+export const stockBlurbs = createJsonApiResource(["stocks", "blurbs"], "/stock/blurbs", "blurb", {
+  defaultListParams: { include: "stock" },
+});
 
-export const stockNotes = createJsonApiResource(
-  ["stocks", "notes"],
-  "/stock/notes",
-  "note",
-  { defaultListParams: { include: "stock" } },
-);
+export const stockNotes = createJsonApiResource(["stocks", "notes"], "/stock/notes", "note", {
+  defaultListParams: { include: "stock" },
+});
 
 export const stockDimensionInfos = createJsonApiResource(
   ["stocks", "dimension-infos"],

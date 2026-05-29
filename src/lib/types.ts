@@ -5,6 +5,8 @@ export interface StockMaterialRow {
   materialId?: number;
   name: string;
   composite: number;
+  /** When true, `name` is included in edited/generated titles. */
+  showInTitle?: boolean;
 }
 
 export type StockMaterialRowUpdate = Partial<StockMaterialRow>;
@@ -55,6 +57,10 @@ export interface StockItem {
   toZoho?: boolean;
   editedTitle?: string;
   generatedTitle?: string;
+  /** Include category name in composed titles (makeup tab). */
+  categoryShowInTitle?: boolean;
+  colorShowInTitle?: boolean;
+  displayShowInTitle?: boolean;
   // Makeup
   categoryCode?: string;
   colorCode?: string;

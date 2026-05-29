@@ -153,10 +153,9 @@ export function useStockEditPage() {
   const onGenerateBarcodes = async () => {
     try {
       const result = await stocks.api.generateBarcode();
-      const barcode = String(result.barcode ?? "");
-      if (barcode) {
-        setValue("packBarcode", barcode, { shouldDirty: true });
-        setValue("retailBarcode", barcode, { shouldDirty: true });
+      if (result.pack_barcode && result.retail_barcode) {
+        setValue("packBarcode", result.pack_barcode, { shouldDirty: true });
+        setValue("retailBarcode", result.retail_barcode, { shouldDirty: true });
         toast.success("Barcodes generated");
       } else {
         toast.info("No barcode returned from API");

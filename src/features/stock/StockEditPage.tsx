@@ -145,7 +145,9 @@ export function StockEditPage() {
           onGenerateCode={() => void handleGenerateCode()}
         />
 
-        <StockEditTabs makeupTabProps={{ onGenerateBarcodes }} />
+        <StockEditTabs
+          makeupTabProps={{ onGenerateBarcodes, resetSeed: page.id, isStockCreated: !isNew }}
+        />
       </EditScreen>
     </FormProvider>
   );

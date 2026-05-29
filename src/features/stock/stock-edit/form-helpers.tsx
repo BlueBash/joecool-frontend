@@ -7,6 +7,7 @@ import {
 } from "react-hook-form";
 import { Field } from "@/components/form-primitives";
 import { FieldError } from "@/components/form";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { referenceLabel, type ReferenceOption } from "@/lib/reference";
 import type { StockFormValues } from "../stock-form-schema";
@@ -266,7 +267,7 @@ export function SelectedPartyInfo({
   );
 }
 
-/** Edited title falls back to `title` when empty (identity strip). */
+/** Edited title falls back to `title` only when unset (`??`), not when cleared (`""`). */
 export function StockEditedTitleField() {
   const {
     control,
@@ -284,7 +285,7 @@ export function StockEditedTitleField() {
         name="editedTitle"
         render={({ field }) => (
           <Input
-            value={field.value || title || ""}
+            value={field.value ?? title ?? ""}
             onChange={(e) => field.onChange(e.target.value)}
             onBlur={field.onBlur}
             disabled={isSubmitting}
@@ -336,7 +337,7 @@ type StockFlagCodeCheckboxProps = {
   label: string;
 };
 
-/** Native checkbox bound to `flagCodes.<code>` — preserves flag tab styling. */
+/** Checkbox bound to `flagCodes.<code>` — preserves flag tab styling. */
 export function StockFlagCodeCheckbox({ code, label }: StockFlagCodeCheckboxProps) {
   const { control, formState } = useFormContext<StockFormValues>();
   const name = `flagCodes.${code}` as FieldPath<StockFormValues>;
@@ -348,13 +349,13 @@ export function StockFlagCodeCheckbox({ code, label }: StockFlagCodeCheckboxProp
       defaultValue={false}
       render={({ field }) => (
         <label className="flex items-center gap-2 px-2 py-1.5 rounded border border-border hover:bg-accent cursor-pointer text-[13px]">
-          <input
-            type="checkbox"
+          <Checkbox
+            size="sm"
             checked={field.value === true}
-            onChange={(e) => field.onChange(e.target.checked)}
+            onCheckedChange={(v) => field.onChange(Boolean(v))}
             onBlur={field.onBlur}
+            ref={field.ref}
             disabled={formState.isSubmitting}
-            className="h-3.5 w-3.5"
           />
           <span className="text-muted-foreground">({code})</span> {label}
         </label>
@@ -363,7 +364,7 @@ export function StockFlagCodeCheckbox({ code, label }: StockFlagCodeCheckboxProp
   );
 }
 
-/** Native checkbox for identity strip (TO Zoho). */
+/** Checkbox for identity strip (TO Zoho). */
 export function StockInlineCheckbox({
   name,
   children,
@@ -380,14 +381,14 @@ export function StockInlineCheckbox({
       control={control}
       name={name}
       render={({ field }) => (
-        <label className={className ?? "inline-flex items-center gap-2 text-[13px] mt-3"}>
-          <input
-            type="checkbox"
+        <label className={className ?? "inline-flex items-center gap-2 text-[13px] mt-3 cursor-pointer"}>
+          <Checkbox
+            size="sm"
             checked={!!field.value}
-            onChange={(e) => field.onChange(e.target.checked)}
+            onCheckedChange={(v) => field.onChange(Boolean(v))}
             onBlur={field.onBlur}
+            ref={field.ref}
             disabled={formState.isSubmitting}
-            className="h-3.5 w-3.5"
           />
           {children}
         </label>

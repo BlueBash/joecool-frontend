@@ -10,6 +10,7 @@ import { EditScreen, EditCard } from "@/components/edit-screen";
 import { FormCheckboxField, FormRoot, FormSelectField, FormTextField } from "@/components/form";
 import { FormGrid } from "@/components/form-primitives";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Pill } from "@/components/pill";
 import { CopyableCode } from "@/components/app-shell";
@@ -316,10 +317,10 @@ export function OperatorEditPage() {
                   key={p}
                   className="flex items-center gap-2 px-2 py-1.5 rounded border border-border hover:bg-accent cursor-pointer text-[13px]"
                 >
-                  <input
-                    type="checkbox"
+                  <Checkbox
+                    size="sm"
                     checked={selectedPerms.has(p)}
-                    onChange={() => togglePerm(p)}
+                    onCheckedChange={() => togglePerm(p)}
                     disabled={isSaving}
                   />
                   {p}

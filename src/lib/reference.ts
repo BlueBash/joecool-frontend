@@ -3,7 +3,8 @@ export interface ReferenceOption {
   id: number | string;
   name: string;
   code?: string;
-  [key: string]: string | number | undefined;
+  show?: boolean;
+  [key: string]: string | number | boolean | undefined;
 }
 
 export type { ReferenceDisplayConfig } from "@/lib/reference-display";

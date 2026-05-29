@@ -1,6 +1,5 @@
 import { Plus, Trash2 } from "lucide-react";
-import { Controller, useFieldArray, useFormContext } from "react-hook-form";
-import { ReferenceField } from "@/components/reference-field";
+import { useFieldArray, useFormContext } from "react-hook-form";
 import {
   RING_SIZE_REFERENCE_DISPLAY,
   STOCK_PACKAGING_REFERENCE_DISPLAY,
@@ -16,16 +15,75 @@ import {
   FormTextareaField,
   FormTextField,
 } from "@/components/form";
-import { Button } from "@/components/ui/button";
 import type { StockFormValues } from "../../stock-form-schema";
 import { refId } from "../utils";
 import { STOCK_FIELD_CLASS } from "../field-classes";
+import {
+  StockTitleCompositionProvider,
+  useStockTitleCompositionContext,
+} from "../StockTitleCompositionContext";
+import { StockTitleReferenceField } from "../StockTitleReferenceField";
 
-export function StockEditMakeupTab({ onGenerateBarcodes }: StockEditMakeupTabProps) {
-  const { TXT, NUM, MONO } = STOCK_FIELD_CLASS;
-  const { control, setValue, watch } = useFormContext<StockFormValues>();
-  const displayName = watch("displayName");
+function MaterialsSection() {
+  const { NUM } = STOCK_FIELD_CLASS;
+  const { control } = useFormContext<StockFormValues>();
+  const { syncTitles } = useStockTitleCompositionContext();
   const { fields, append, remove } = useFieldArray({ control, name: "materials" });
+
+  return (
+    <EditCard
+      title="Materials & Compositions"
+      headerActions={
+        <span
+          className="text-[12px] text-primary flex items-center hover:underline cursor-pointer"
+          onClick={() => {
+            append({ materialId: undefined, name: "", composite: 0, showInTitle: false });
+            syncTitles();
+          }}
+        >
+          <Plus className="h-3.5 w-3.5" /> Add Material
+        </span>
+      }
+    >
+      <div className="space-y-2">
+        {fields.length === 0 && (
+          <p className="text-[12.5px] text-muted-foreground">No materials added.</p>
+        )}
+        {fields.map((row, index) => (
+          <div key={row.id} className="grid grid-cols-[1fr_90px_28px] gap-2 items-end">
+            <StockTitleReferenceField<StockFormValues>
+              name={`materials.${index}.materialId`}
+              labelKey={`materials.${index}.name`}
+              showInTitleName={`materials.${index}.showInTitle`}
+              label="Material"
+              klass={ReferenceKlass.Material}
+              placeholder="Search materials…"
+            />
+            <FormNumberField<StockFormValues>
+              name={`materials.${index}.composite`}
+              label="Composite %"
+              inputClassName={NUM}
+            />
+            <button
+              type="button"
+              onClick={() => {
+                remove(index);
+                syncTitles();
+              }}
+              className="h-8 text-muted-foreground hover:text-destructive"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        ))}
+      </div>
+    </EditCard>
+  );
+}
+
+function MakeupTabContent({ onGenerateBarcodes }: StockEditMakeupTabProps) {
+  const { TXT, NUM } = STOCK_FIELD_CLASS;
+  const { setValue } = useFormContext<StockFormValues>();
 
   return (
     <TabsContent value="makeup" className="mt-3">
@@ -33,48 +91,42 @@ export function StockEditMakeupTab({ onGenerateBarcodes }: StockEditMakeupTabPro
         <div className="lg:col-span-2">
           <EditCard title="Description">
             <FormGrid cols={2}>
-              <FormReferenceField<StockFormValues>
+              <StockTitleReferenceField<StockFormValues>
                 name="categoryId"
                 labelKey="category"
+                showInTitleName="categoryShowInTitle"
                 label="Category"
                 klass={ReferenceKlass.Category}
                 placeholder="Search categories…"
               />
-              <FormReferenceField<StockFormValues>
+              <StockTitleReferenceField<StockFormValues>
                 name="colourId"
                 labelKey="color"
+                showInTitleName="colorShowInTitle"
                 label="Color"
                 klass={ReferenceKlass.Colour}
                 placeholder="Search colours…"
               />
-              <Controller
-                control={control}
+              <StockTitleReferenceField<StockFormValues>
                 name="displayId"
-                render={({ field }) => (
-                  <ReferenceField
-                    label="Display"
-                    klass={ReferenceKlass.Display}
-                    value={field.value ?? null}
-                    displayLabel={displayName}
-                    placeholder="Search displays…"
-                    onChange={(id, opt) => {
-                      field.onChange(refId(id));
-                      if (opt) {
-                        setValue("displayName", opt.name, { shouldDirty: true });
-                        if (opt.code) setValue("displayCode", opt.code, { shouldDirty: true });
-                        const displayCost =
-                          opt.cost != null && opt.cost !== "" ? Number(opt.cost) : undefined;
-                        if (displayCost != null && Number.isFinite(displayCost)) {
-                          setValue("cost", displayCost, { shouldDirty: true });
-                        }
-                      } else if (id == null || id === "") {
-                        setValue("displayName", "", { shouldDirty: true });
-                        setValue("displayCode", "", { shouldDirty: true });
-                        setValue("cost", undefined, { shouldDirty: true });
-                      }
-                    }}
-                  />
-                )}
+                labelKey="displayName"
+                showInTitleName="displayShowInTitle"
+                label="Display"
+                klass={ReferenceKlass.Display}
+                placeholder="Search displays…"
+                onReferenceChange={(id, opt) => {
+                  if (opt) {
+                    if (opt.code) setValue("displayCode", opt.code, { shouldDirty: true });
+                    const displayCost =
+                      opt.cost != null && opt.cost !== "" ? Number(opt.cost) : undefined;
+                    if (displayCost != null && Number.isFinite(displayCost)) {
+                      setValue("cost", displayCost, { shouldDirty: true });
+                    }
+                  } else if (id == null || id === "") {
+                    setValue("displayCode", "", { shouldDirty: true });
+                    setValue("cost", undefined, { shouldDirty: true });
+                  }
+                }}
               />
               <FormNumberField<StockFormValues>
                 name="cost"
@@ -208,60 +260,34 @@ export function StockEditMakeupTab({ onGenerateBarcodes }: StockEditMakeupTabPro
               <FormTextField<StockFormValues>
                 name="packBarcode"
                 label="Pack Barcode"
-                mono
-                inputClassName={MONO}
+                readOnly={true}
+                inputClassName={STOCK_FIELD_CLASS.MONO}
               />
               <FormTextField<StockFormValues>
                 name="retailBarcode"
                 label="Retail Barcode"
                 mono
-                inputClassName={MONO}
+                readOnly={true}
+                inputClassName={STOCK_FIELD_CLASS.MONO}
               />
             </FormGrid>
           </EditCard>
 
-          <EditCard
-            title="Materials & Compositions"
-            headerActions={
-              <span
-                className="text-[12px] text-primary flex items-center hover:underline cursor-pointer"
-                onClick={() => append({ materialId: undefined, name: "", composite: 0 })}
-              >
-                <Plus className="h-3.5 w-3.5" /> Add Material
-              </span>
-            }
-          >
-            <div className="space-y-2">
-              {fields.length === 0 && (
-                <p className="text-[12.5px] text-muted-foreground">No materials added.</p>
-              )}
-              {fields.map((row, index) => (
-                <div key={row.id} className="grid grid-cols-[1fr_90px_28px] gap-2 items-end">
-                  <FormReferenceField<StockFormValues>
-                    name={`materials.${index}.materialId`}
-                    labelKey={`materials.${index}.name`}
-                    label="Material"
-                    klass={ReferenceKlass.Material}
-                    placeholder="Search materials…"
-                  />
-                  <FormNumberField<StockFormValues>
-                    name={`materials.${index}.composite`}
-                    label="Composite %"
-                    inputClassName={NUM}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => remove(index)}
-                    className="h-8 text-muted-foreground hover:text-destructive"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-              ))}
-            </div>
-          </EditCard>
+          <MaterialsSection />
         </div>
       </div>
     </TabsContent>
+  );
+}
+
+export function StockEditMakeupTab({
+  onGenerateBarcodes,
+  resetSeed,
+  isStockCreated,
+}: StockEditMakeupTabProps) {
+  return (
+    <StockTitleCompositionProvider resetSeed={resetSeed} isStockCreated={isStockCreated}>
+      <MakeupTabContent onGenerateBarcodes={onGenerateBarcodes} />
+    </StockTitleCompositionProvider>
   );
 }

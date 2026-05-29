@@ -138,7 +138,9 @@ function rowToOption(row: CatalogRow): ReferenceOption {
       if (iso != null && iso !== "") base.iso_code = String(iso);
       continue;
     }
-    if (typeof val === "string" || typeof val === "number") base[key] = val;
+    if (typeof val === "string" || typeof val === "number" || typeof val === "boolean") {
+      base[key] = val;
+    }
   }
   return base;
 }

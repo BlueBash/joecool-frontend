@@ -23,6 +23,7 @@ import {
   mapSellingPricesToForm,
   parseSellingPricesFromApi,
 } from "./stock-edit/selling/map-selling-prices";
+import { inferShowInTitleFromTitles } from "./stock-edit/stock-title-composition";
 
 function asRecord(v: unknown): Record<string, unknown> {
   return v && typeof v === "object" ? (v as Record<string, unknown>) : {};
@@ -91,16 +92,29 @@ function optionalNum(v: unknown): number | undefined {
   return Number.isFinite(n) ? n : undefined;
 }
 
-function parseMaterials(raw: unknown): StockMaterialRow[] {
+function parseMaterials(
+  raw: unknown,
+  editedTitle: string,
+  generatedTitle: string,
+): StockMaterialRow[] {
   // New API shape: `materials_attributes` array of material rows.
   if (Array.isArray(raw)) {
     return raw
       .filter((row): row is Record<string, unknown> => !!row && typeof row === "object")
-      .map((row) => ({
-        materialId: idNum(row.material_id),
-        composite: num(row.composite),
-        name: str(row.name),
-      }));
+      .map((row) => {
+        const name = str(row.name);
+        const material = asRecord(row.material);
+        return {
+          materialId: idNum(row.material_id ?? material.id),
+          composite: num(row.composite),
+          name,
+          showInTitle: inferShowInTitleFromTitles(
+            name,
+            generatedTitle,
+            row.show ?? material.show,
+          ),
+        };
+      });
   }
 
   // Backward compatibility for legacy `materials.material_N` object payloads.
@@ -108,7 +122,7 @@ function parseMaterials(raw: unknown): StockMaterialRow[] {
   const obj = raw as Record<string, unknown>;
   return Object.entries(obj)
     .filter(([k]) => k.startsWith("material_"))
-    .map(([, v]) => ({ name: str(v), composite: 0 }));
+    .map(([, v]) => ({ name: str(v), composite: 0, showInTitle: false }));
 }
 
 function rangeKeyOrder(key: string): number {
@@ -229,6 +243,9 @@ export function mapRowToStockItem(row: StockRow): StockItem {
   );
   const display = asRecord(attrs.display);
   const category = asRecord(attrs.category);
+  const colour = asRecord(attrs.colour);
+  const editedTitle = str(firstNonEmpty(attrs.whlsl_title, attrs.edited_title));
+  const generatedTitle = str(attrs.generated_title);
   const tariffCode = asRecord(attrs.tariff_code);
   const stockPackagingData = asRecord(attrs.stock_packaging_data);
   const noOfSizes = asRecord(fittingInfo.no_of_sizes);
@@ -255,10 +272,20 @@ export function mapRowToStockItem(row: StockRow): StockItem {
     title,
     category: relationLabel(category, attrs.category_name, attrs.category),
     categoryId: idNum(attrs.category_id ?? category.id),
+    categoryShowInTitle: inferShowInTitleFromTitles(
+      relationLabel(category, attrs.category_name, attrs.category),
+      generatedTitle,
+      category.show,
+    ),
     onHand,
     reorderLevel,
-    color: str(attrs.colour ?? attrs.color, "—"),
-    colourId: idNum(attrs.colour_id),
+    color: str(colour.name ?? attrs.colour ?? attrs.color, "—"),
+    colourId: idNum(attrs.colour_id ?? colour.id),
+    colorShowInTitle: inferShowInTitleFromTitles(
+      str(colour.name ?? attrs.colour ?? attrs.color, "—"),
+      generatedTitle,
+      colour.show,
+    ),
     ringSizeId,
     size: ringSizeId ? "" : str(ringSizeRaw),
     introDate,
@@ -286,14 +313,19 @@ export function mapRowToStockItem(row: StockRow): StockItem {
     flagCodes: stockFlagCodesFromApi(attrs.flags),
     notes: stockNotes.notes,
     supplierNotes: stockNotes.supplierNotes,
-    editedTitle: str(attrs.edited_title),
-    generatedTitle: str(attrs.generated_title),
+    editedTitle,
+    generatedTitle,
     toZoho: !!(attrs.flag_zoho ?? (attrs.flags && asRecord(attrs.flags).flag_zoho)),
     categoryCode: str(attrs.category_code),
     colorCode: str(attrs.colour_code ?? attrs.color_code),
     displayCode: str(attrs.display_code ?? display.code),
     displayName: str(attrs.display_name ?? display.name),
     displayId: idNum(attrs.display_id ?? display.id),
+    displayShowInTitle: inferShowInTitleFromTitles(
+      str(attrs.display_name ?? display.name),
+      generatedTitle,
+      display.show,
+    ),
     cost: optionalNum(display.cost ?? attrs.display_cost),
     uniqueDescription: str(attrs.uniq_desc),
     packBarcode: str(attrs.pack_barcode),
@@ -321,7 +353,7 @@ export function mapRowToStockItem(row: StockRow): StockItem {
     frontLocation: str(attrs.locn_front),
     backLocation: str(attrs.locn_back),
     catalogueLocation: str(attrs.catal_page),
-    materials: parseMaterials(attrs.materials_attributes ?? attrs.materials),
+    materials: parseMaterials(attrs.materials_attributes ?? attrs.materials, editedTitle, generatedTitle),
     wholesaleBlurb: firstNonEmpty(blurbs.wholesaleBlurb, attrs.wholesale_blurb),
     consumerBlurb: firstNonEmpty(blurbs.consumerBlurb, attrs.consumer_blurb),
     ranges: parseRanges(attrs.range),
