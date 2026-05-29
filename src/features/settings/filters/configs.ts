@@ -16,7 +16,6 @@ const SETTINGS_LIST_FILTERS_BY_SLUG: Partial<Record<string, SettingsListFilterCo
   "address/agent": SETTINGS_FILTER_PRESETS.nameOnly(),
   "address/account-manager": SETTINGS_FILTER_PRESETS.accountManager(),
   "address/country": SETTINGS_FILTER_PRESETS.country(),
-  "stock/stock/marketing": SETTINGS_FILTER_PRESETS.codeBlurb(),
   "stock/fittings/messages": SETTINGS_FILTER_PRESETS.categoryAudience(),
   "stock/dimensions/messages": SETTINGS_FILTER_PRESETS.categoryAudience(),
   "stock/sizes": SETTINGS_FILTER_PRESETS.ringSize(),

@@ -254,7 +254,7 @@ export const stockMaterials = mk(
   ["stock-settings", "materials"],
   "/stock_settings/materials",
   "material",
-  { include: "amazon_metal_stamp,amazon_material,amazon_metal_type" },
+  // { include: "amazon_metal_stamp,amazon_material,amazon_metal_type" },
 );
 
 export const stockJoeOnlineRanges = mk(

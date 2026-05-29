@@ -18,6 +18,11 @@ import {
   parseFittingNoOfSizes,
   resizeFittingNoOfSizes,
 } from "./stock-edit/fitting-sizes";
+import { mapCostPriceToForm } from "./stock-edit/cost/map-cost-price";
+import {
+  mapSellingPricesToForm,
+  parseSellingPricesFromApi,
+} from "./stock-edit/selling/map-selling-prices";
 
 function asRecord(v: unknown): Record<string, unknown> {
   return v && typeof v === "object" ? (v as Record<string, unknown>) : {};
@@ -87,11 +92,23 @@ function optionalNum(v: unknown): number | undefined {
 }
 
 function parseMaterials(raw: unknown): StockMaterialRow[] {
+  // New API shape: `materials_attributes` array of material rows.
+  if (Array.isArray(raw)) {
+    return raw
+      .filter((row): row is Record<string, unknown> => !!row && typeof row === "object")
+      .map((row) => ({
+        materialId: idNum(row.material_id),
+        composite: num(row.composite),
+        name: str(row.name),
+      }));
+  }
+
+  // Backward compatibility for legacy `materials.material_N` object payloads.
   if (!raw || typeof raw !== "object") return [];
   const obj = raw as Record<string, unknown>;
   return Object.entries(obj)
     .filter(([k]) => k.startsWith("material_"))
-    .map(([, v]) => ({ material: str(v), composite: 0 }));
+    .map(([, v]) => ({ name: str(v), composite: 0 }));
 }
 
 function rangeKeyOrder(key: string): number {
@@ -205,6 +222,11 @@ export function mapRowToStockItem(row: StockRow): StockItem {
   const fittingInfo = asRecord(attrs.fitting_info);
   const stockDimension = asRecord(attrs.stock_dimension);
   const costPrice = asRecord(attrs.cost_price);
+  const sellingPricesRaw = attrs.selling_prices;
+  const costPriceForm = mapCostPriceToForm(costPrice);
+  const sellingPriceForm = mapSellingPricesToForm(
+    parseSellingPricesFromApi(sellingPricesRaw),
+  );
   const display = asRecord(attrs.display);
   const category = asRecord(attrs.category);
   const tariffCode = asRecord(attrs.tariff_code);
@@ -241,7 +263,19 @@ export function mapRowToStockItem(row: StockRow): StockItem {
     size: ringSizeId ? "" : str(ringSizeRaw),
     introDate,
     costPrice: num(costPrice.landed_factr ?? costPrice.calc_ready ?? attrs.cost),
-    sellingPrice: num(attrs.sell_gbp ?? attrs.gbp_whlsl),
+    sellingPrice: num(
+      sellingPriceForm.gbpWhlsl ??
+        attrs.sell_gbp ??
+        attrs.gbp_whlsl,
+    ),
+    costPriceRaw: costPrice,
+    sellingPricesRaw:
+      sellingPricesRaw && typeof sellingPricesRaw === "object"
+        ? (sellingPricesRaw as Record<string, unknown>)
+        : undefined,
+    ...costPriceForm,
+    ...sellingPriceForm,
+    supplierFobX: num(supplierData.fob_factor),
     supplierId: idNum(attrs.suppcode ?? supplierData.id),
     supplier: firstNonEmpty(supplierData.name, supplierData.code),
     supplierCode: str(supplierData.code),
@@ -287,7 +321,7 @@ export function mapRowToStockItem(row: StockRow): StockItem {
     frontLocation: str(attrs.locn_front),
     backLocation: str(attrs.locn_back),
     catalogueLocation: str(attrs.catal_page),
-    materials: parseMaterials(attrs.materials),
+    materials: parseMaterials(attrs.materials_attributes ?? attrs.materials),
     wholesaleBlurb: firstNonEmpty(blurbs.wholesaleBlurb, attrs.wholesale_blurb),
     consumerBlurb: firstNonEmpty(blurbs.consumerBlurb, attrs.consumer_blurb),
     ranges: parseRanges(attrs.range),
@@ -399,11 +433,14 @@ export function stockItemToPayload(item: StockItem): StockWritePayload {
   }
 
   if (item.materials?.length) {
-    const materials: Record<string, string> = {};
-    item.materials.forEach((m, i) => {
-      if (m.material) materials[`material_${i + 1}`] = m.material;
-    });
-    payload.materials = materials;
+    const materialsAttributes = item.materials
+      .filter((m) => m.materialId != null || m.name.trim() !== "")
+      .map((m) => ({
+        material_id: m.materialId,
+        composite: String(m.composite ?? 0),
+        name: m.name,
+      }));
+    if (materialsAttributes.length) payload.materials_attributes = materialsAttributes;
   }
 
   if (item.ranges?.length) {

@@ -3,6 +3,7 @@ import { createResourceKeys, http } from "@/api/_client";
 import type { ApiEnvelope, ID } from "@/api/_client";
 import type { ApiError } from "@/api/_client/errors";
 import { denormalizeJsonApiEnvelope } from "@/api/_client/json-api";
+import { SUPPLIER_DETAIL_INCLUDE } from "@/api/suppliers/suppliers";
 import type {
   SuppStockCostFactorRow,
   SuppStockCostFactorWritePayload,
@@ -19,11 +20,14 @@ async function updateFactor(id: ID, payload: SuppStockCostFactorWritePayload) {
 }
 
 async function fetchSupplierDefaults(supplierId: ID) {
-  const res = await http.get<{ stock_cost_factor?: Record<string, unknown> }>(
-    `/suppliers/${supplierId}`,
-    { params: { include: "supp_stock_cost_factor" } },
-  );
-  return res.data.stock_cost_factor ?? null;
+  const res = await http.get<ApiEnvelope<unknown>>(`/suppliers/${supplierId}`, {
+    params: { include: SUPPLIER_DETAIL_INCLUDE },
+  });
+  const entity = denormalizeJsonApiEnvelope(res.data);
+  const factor = entity.supp_stock_cost_factor;
+  return factor && typeof factor === "object"
+    ? (factor as Record<string, unknown>)
+    : null;
 }
 
 export const supplierStockCostFactors = {

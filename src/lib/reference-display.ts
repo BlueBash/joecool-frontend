@@ -37,6 +37,12 @@ export const STOCK_PACKAGING_REFERENCE_DISPLAY: ReferenceDisplayConfig = {
   badgeField: "code",
 };
 
+/** Stock cost settings rows: name + cost badge. */
+export const STOCK_COST_REFERENCE_DISPLAY: ReferenceDisplayConfig = {
+  labelField: "name",
+  badgeField: "cost",
+};
+
 function resolveBadgeField(config?: ReferenceDisplayConfig): string | null | undefined {
   if (config && "badgeField" in config && config.badgeField === null) return null;
   return config?.badgeField ?? DEFAULT_REFERENCE_DISPLAY.badgeField;
@@ -66,8 +72,12 @@ export function referenceBadgeText(
 ): string | undefined {
   const badgeField = resolveBadgeField(config);
   if (!badgeField) return undefined;
-  const badge = getReferenceFieldValue(opt, badgeField);
+  let badge = getReferenceFieldValue(opt, badgeField);
   if (!badge) return undefined;
+  if (badgeField === "cost") {
+    const n = Number(badge);
+    if (Number.isFinite(n)) badge = n.toFixed(2);
+  }
   const label = referenceDisplayText(opt, config);
   if (badge === label && !config?.showBadgeWhenSameAsLabel) return undefined;
   return badge;

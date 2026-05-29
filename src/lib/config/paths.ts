@@ -60,15 +60,12 @@ export const paths = {
     "/settings/stock/stock/selections",
     "/settings/stock/stock/collections",
     "/settings/stock/stock/stock-ranges",
-    "/settings/stock/stock/marketing",
   ] as const,
   settingsStockDetailsMessagesRoutes: ["/settings/stock/messages"] as const,
   settingsStockDetailsUnitsRoutes: ["/settings/stock/units"] as const,
-  settingsStockDetailsCardingsRoutes: ["/settings/stock/carding"] as const,
   settingsStockDetailsDisplaysRoutes: ["/settings/stock/displays"] as const,
   settingsStockDetailsColorsRoutes: [
     "/settings/stock/colors",
-    "/settings/stock/colors-options",
   ] as const,
   settingsStockDetailsSizesRoutes: ["/settings/stock/sizes"] as const,
   settingsStockDetailsCostsRoutes: [
@@ -79,7 +76,6 @@ export const paths = {
     "/settings/stock/other-assortments",
     "/settings/stock/other-genders",
     "/settings/stock/other-materials",
-    "/settings/stock/other-online-ranges",
     "/settings/stock/other-custom-tariff-codes",
   ] as const,
 
@@ -91,7 +87,6 @@ export const paths = {
   settingsAddressAddressPaymentMethodRoutes: ["/settings/address/payment-method"] as const,
   settingsAddressShipFromRoutes: ["/settings/address/ship-from"] as const,
   settingsAddressPayTermRoutes: ["/settings/address/pay-term"] as const,
-  settingsAddressSpecialCustomerRoutes: ["/settings/address/special-customer"] as const,
   settingsAddressShipMethodRoutes: ["/settings/address/ship-method"] as const,
   settingsAddressContactDepartmentsRoutes: ["/settings/address/contact-departments"] as const,
   settingsAddressContactRoleRoutes: ["/settings/address/contact-role"] as const,

@@ -7,11 +7,9 @@ import {
   stockAmazonTemplates,
   stockAmazonUsItemTypes,
   stockAssortments,
-  stockCardings,
   stockCategories,
   stockCategoryGroups,
   stockCollections,
-  stockColourOptions,
   stockColours,
   stockCostsAssembly,
   stockCostsPacking,
@@ -25,8 +23,6 @@ import {
   stockFittingSizeMeasures,
   stockFittingSizePackAssortments,
   stockFittingSizeSpecs,
-  stockJoeOnlineRanges,
-  stockMarketingBlurbs,
   stockMaterials,
   stockPackagings,
   stockRanges,
@@ -48,8 +44,6 @@ import {
   mapDisplayPayload,
   mapFittingMessagePayload,
   mapFittingPackAssortmentPayload,
-  mapJoeOnlineRangePayload,
-  mapMarketingBlurbPayload,
   mapMaterialPayload,
   mapNameOnlyPayload,
   mapRingSizePayload,
@@ -203,17 +197,6 @@ export const stockSettingsSections: Partial<Record<string, SettingsSectionConfig
     buildListingColumns: buildSettingListingColumns,
 
   }),
-  "stock/stock/marketing": listing({
-    resource: stockMarketingBlurbs as unknown as SettingsResource,
-    singular: "Marketing blurb",
-    plural: "Marketing blurbs",
-    bodyKey: "marketing_blurb",
-    fields: SettingsModuleFormData.marketing_blurb,
-    mapWritePayload: mapMarketingBlurbPayload,
-    buildListingColumns: buildSettingListingColumns,
-
-  }),
-
   "stock/amazon/templates": listing({
     resource: stockAmazonTemplates as unknown as SettingsResource,
     singular: "Amazon template",
@@ -295,16 +278,6 @@ export const stockSettingsSections: Partial<Record<string, SettingsSectionConfig
     buildListingColumns: buildSettingListingColumns,
 
   }),
-  "stock/colors-options": listing({
-    resource: stockColourOptions as unknown as SettingsResource,
-    singular: "Colour option",
-    plural: "Colour options",
-    bodyKey: "colour_option",
-    fields: SettingsModuleFormData.colour_option,
-    mapWritePayload: mapCodeNamePayload,
-    buildListingColumns: buildSettingListingColumns,
-
-  }),
   "stock/sizes": listing({
     resource: stockRingSizes as unknown as SettingsResource,
     singular: "Ring size",
@@ -312,6 +285,16 @@ export const stockSettingsSections: Partial<Record<string, SettingsSectionConfig
     bodyKey: "ring_size",
     fields: SettingsModuleFormData.ring_size,
     mapWritePayload: mapRingSizePayload,
+    buildListingColumns: buildSettingListingColumns,
+
+  }),
+  "stock/messages": listing({
+    resource: stockWebStockAvailabilityMessages as unknown as SettingsResource,
+    singular: "Stock message",
+    plural: "Stock messages",
+    bodyKey: "web_stock_availability_message",
+    fields: SettingsModuleFormData.web_stock_availability_message,
+    mapWritePayload: mapWebStockAvailabilityPayload,
     buildListingColumns: buildSettingListingColumns,
 
   }),
@@ -331,16 +314,6 @@ export const stockSettingsSections: Partial<Record<string, SettingsSectionConfig
     plural: "Units",
     bodyKey: "unit",
     fields: SettingsModuleFormData.unit,
-    mapWritePayload: mapCodeNamePayload,
-    buildListingColumns: buildSettingListingColumns,
-
-  }),
-  "stock/carding": listing({
-    resource: stockCardings as unknown as SettingsResource,
-    singular: "Carding",
-    plural: "Cardings",
-    bodyKey: "carding",
-    fields: SettingsModuleFormData.carding,
     mapWritePayload: mapCodeNamePayload,
     buildListingColumns: buildSettingListingColumns,
 
@@ -403,16 +376,6 @@ export const stockSettingsSections: Partial<Record<string, SettingsSectionConfig
     bodyKey: "material",
     fields: SettingsModuleFormData.material,
     mapWritePayload: mapMaterialPayload,
-    buildListingColumns: buildSettingListingColumns,
-
-  }),
-  "stock/other-online-ranges": listing({
-    resource: stockJoeOnlineRanges as unknown as SettingsResource,
-    singular: "Joe online range",
-    plural: "Joe online ranges",
-    bodyKey: "joe_online_range",
-    fields: SettingsModuleFormData.joe_online_range,
-    mapWritePayload: mapJoeOnlineRangePayload,
     buildListingColumns: buildSettingListingColumns,
 
   }),

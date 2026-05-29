@@ -225,7 +225,7 @@ export function StockEditMakeupTab({ onGenerateBarcodes }: StockEditMakeupTabPro
             headerActions={
               <span
                 className="text-[12px] text-primary flex items-center hover:underline cursor-pointer"
-                onClick={() => append({ material: "", composite: 0 })}
+                onClick={() => append({ materialId: undefined, name: "", composite: 0 })}
               >
                 <Plus className="h-3.5 w-3.5" /> Add Material
               </span>
@@ -239,7 +239,7 @@ export function StockEditMakeupTab({ onGenerateBarcodes }: StockEditMakeupTabPro
                 <div key={row.id} className="grid grid-cols-[1fr_90px_28px] gap-2 items-end">
                   <FormReferenceField<StockFormValues>
                     name={`materials.${index}.materialId`}
-                    labelKey={`materials.${index}.material`}
+                    labelKey={`materials.${index}.name`}
                     label="Material"
                     klass={ReferenceKlass.Material}
                     placeholder="Search materials…"

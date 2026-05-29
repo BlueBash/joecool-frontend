@@ -25,6 +25,10 @@ export const ReferenceKlass = {
   DimensionPackAssortment: "StockSettings::DimensionPackAssortment",
   DimensionMeasure: "StockSettings::DimensionMeasure",
   DimensionSpec: "StockSettings::DimensionSpec",
+  /** Stock settings costs (`cost_type` 0 — JC packing on cost tab). */
+  StockCostAssembly: "StockSettings::StockCostAssembly",
+  /** Stock settings costs (`cost_type` 1 — assembly on cost tab). */
+  StockCostPacking: "StockSettings::StockCostPacking",
   RingSize: "StockSettings::RingSize",
   Material: "StockSettings::Material",
   Range: "StockSettings::Range",

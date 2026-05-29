@@ -36,12 +36,12 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 const nav = [
-  { to: paths.dashboard, label: "Dashboard", icon: LayoutDashboard },
+  // { to: paths.dashboard, label: "Dashboard", icon: LayoutDashboard },
   { to: paths.stocks, label: "Stock", icon: Boxes },
   { to: paths.addresses, label: "Addresses", icon: MapPin },
   { to: paths.orders, label: "Orders", icon: ShoppingCart },
   { to: paths.transactions, label: "Transactions", icon: ArrowLeftRight },
-  { to: paths.reports, label: "Reports", icon: BarChart3 },
+  // { to: paths.reports, label: "Reports", icon: BarChart3 },
   { to: paths.operators, label: "Operators", icon: Users },
   { to: paths.timekeeping, label: "Time", icon: Clock },
   { to: paths.settings, label: "Settings", icon: Settings },

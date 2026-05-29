@@ -3,7 +3,7 @@ export type ID = string;
 /** Composed material row on a stock item. */
 export interface StockMaterialRow {
   materialId?: number;
-  material: string;
+  name: string;
   composite: number;
 }
 
@@ -122,7 +122,16 @@ export interface StockItem {
   reorderQty?: number;
   wholesaleTopUpTo?: number;
   // Cost Prices
+  costPriceId?: number;
+  costPriceRaw?: Record<string, unknown>;
+  factCurrencyId?: number;
+  readyCurrencyId?: number;
+  jcPackingId?: number;
+  assemblySettingId?: number;
+  costDisplaySettingId?: number;
+  supplierCostFactorId?: number;
   supplierFobX?: number;
+  firstCost?: number;
   factyCost?: number;
   factyPer?: number;
   factyPack?: string;
@@ -141,6 +150,9 @@ export interface StockItem {
   chargesPct?: number;
   fobChargesPct?: number;
   fobChargesAmount?: number;
+  qualityAmount?: number;
+  probsAmount?: number;
+  chargesAmount?: number;
   itemOb?: number;
   fobBase?: number;
   jcPacking?: string;
@@ -179,18 +191,55 @@ export interface StockItem {
   calcdMarkup?: number;
   gbpWhlsl?: number;
   // Selling Prices
+  sellingPricesRaw?: Record<string, unknown>;
   sellGbp?: number;
   sellEur?: number;
   sellUsd?: number;
-  whlslGbpPrice?: number; whlslGbpPer?: number; whlslGbpPct?: number;
-  whlslEurPrice?: number; whlslEurPer?: number; whlslEurPct?: number;
-  whlslUsdPrice?: number; whlslUsdPer?: number; whlslUsdPct?: number;
-  retailGbpPrice?: number; retailGbpPer?: number; retailGbpPct?: number;
-  retailEurPrice?: number; retailEurPer?: number; retailEurPct?: number;
-  retailUsdPrice?: number; retailUsdPer?: number; retailUsdPct?: number;
-  amazonGbpPrice?: number; amazonGbpPer?: number; amazonGbpPct?: number;
-  amazonEurPrice?: number; amazonEurPer?: number; amazonEurPct?: number;
-  amazonUsdPrice?: number; amazonUsdPer?: number; amazonUsdPct?: number;
+  whlslGbpPrice?: number;
+  whlslGbpPer?: number;
+  whlslGbpPct?: number;
+  whlslGbpSellId?: number;
+  whlslGbpPriceCategoryId?: number;
+  whlslEurPrice?: number;
+  whlslEurPer?: number;
+  whlslEurPct?: number;
+  whlslEurSellId?: number;
+  whlslEurPriceCategoryId?: number;
+  whlslUsdPrice?: number;
+  whlslUsdPer?: number;
+  whlslUsdPct?: number;
+  whlslUsdSellId?: number;
+  whlslUsdPriceCategoryId?: number;
+  retailGbpPrice?: number;
+  retailGbpPer?: number;
+  retailGbpPct?: number;
+  retailGbpSellId?: number;
+  retailGbpPriceCategoryId?: number;
+  retailEurPrice?: number;
+  retailEurPer?: number;
+  retailEurPct?: number;
+  retailEurSellId?: number;
+  retailEurPriceCategoryId?: number;
+  retailUsdPrice?: number;
+  retailUsdPer?: number;
+  retailUsdPct?: number;
+  retailUsdSellId?: number;
+  retailUsdPriceCategoryId?: number;
+  amazonGbpPrice?: number;
+  amazonGbpPer?: number;
+  amazonGbpPct?: number;
+  amazonGbpSellId?: number;
+  amazonGbpPriceCategoryId?: number;
+  amazonEurPrice?: number;
+  amazonEurPer?: number;
+  amazonEurPct?: number;
+  amazonEurSellId?: number;
+  amazonEurPriceCategoryId?: number;
+  amazonUsdPrice?: number;
+  amazonUsdPer?: number;
+  amazonUsdPct?: number;
+  amazonUsdSellId?: number;
+  amazonUsdPriceCategoryId?: number;
   specialPrice?: number;
   // Flags / Specials
   flagCodes?: Record<string, boolean>;

@@ -1,4 +1,10 @@
-import { queryOptions, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  queryOptions,
+  useMutation,
+  useQuery,
+  useQueryClient,
+  type UseMutationOptions,
+} from "@tanstack/react-query";
 import {
   createJsonApiResource,
   createResourceKeys,
@@ -19,7 +25,11 @@ import type {
 export const STOCK_LIST_INCLUDE =
   "category,colour,display,selection,gender,assortment,stock_buyer,cost_price";
 
-/** Must match `StocksController#scope_includes` — do not add `packaging` until StockSerializer exposes it. */
+/**
+ * JSON:API `include` list — relationships only (`StockSerializer`).
+ * `selling_prices` and `supplier_data` are serializer *attributes*, not relationships;
+ * they are returned on the stock payload without being listed here.
+ */
 export const STOCK_DETAIL_INCLUDE =
   "display,collection,selection,gender,assortment,joe_online_range,unit,vat_rate_code,tariff_code,stock_buyer,category,blurbs,notes,cost_price,dimension_info,dimension_info.dimension_assortment,dimension_info.dimension_spec,dimension_info.dimension_measure,fitting_info,fitting_info.fitting_assortment,fitting_info.fitting_spec,fitting_info.fitting_measure,show_kit_items,country_of_origin,manu_country_of_origin,colour";
 
@@ -162,7 +172,13 @@ export const stocks = {
   },
   hooks: {
     ...stocksBase.hooks,
-    useUpdate: (opts) => {
+    useUpdate: (
+      opts?: UseMutationOptions<
+        StockRow,
+        ApiError,
+        { id: ID; data: StockWritePayload }
+      >,
+    ) => {
       const qc = useQueryClient();
       return useMutation<StockRow, ApiError, { id: ID; data: StockWritePayload }>({
         ...opts,

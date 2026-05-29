@@ -7,7 +7,6 @@ import {
   settingsAddressPaymentMethods,
   settingsAddressPayTerms,
   settingsAddressShipFroms,
-  settingsAddressSpecialCustomers,
   settingsAddressUpsServices,
 } from "@/api/settings/address";
 import { mkSettingsResource } from "@/api/settings/resource";
@@ -77,15 +76,6 @@ export const addressSettingsSections: Partial<Record<string, SettingsSectionConf
       bodyKey: "pay_term",
       fields: SettingsModuleFormData.pay_term,
       mapWritePayload: mapPayTermPayload,
-      buildListingColumns: buildSettingListingColumns,
-    }),
-    addrListing("address/special-customer", {
-      resource: settingsAddressSpecialCustomers as unknown as SettingsResource,
-      singular: "Special customer",
-      plural: "Special customers",
-      bodyKey: "special_customer",
-      fields: SettingsModuleFormData.special_customer,
-      mapWritePayload: mapCodeNamePayload,
       buildListingColumns: buildSettingListingColumns,
     }),
     addrListing("address/ship-method", {

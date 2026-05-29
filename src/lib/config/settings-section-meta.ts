@@ -71,11 +71,6 @@ export const SETTINGS_SECTION_META: Record<string, SettingsSectionMeta> = {
     resourceKey: "stock.stock.stock-ranges",
     countKey: "others",
   },
-  "stock/stock/marketing": {
-    label: "Marketing",
-    resourceKey: "stock.stock.marketing",
-    countKey: "messages",
-  },
   "stock/messages": {
     label: "Messages",
     resourceKey: "stock.messages",
@@ -86,11 +81,6 @@ export const SETTINGS_SECTION_META: Record<string, SettingsSectionMeta> = {
     resourceKey: "stock.attributes.units",
     countKey: "units",
   },
-  "stock/carding": {
-    label: "Carding",
-    resourceKey: "stock.presentation.carding",
-    countKey: "carding",
-  },
   "stock/displays": {
     label: "Displays",
     resourceKey: "stock.presentation.displays",
@@ -100,10 +90,6 @@ export const SETTINGS_SECTION_META: Record<string, SettingsSectionMeta> = {
     label: "Colors",
     resourceKey: "stock.attributes.colors",
     countKey: "colours",
-  },
-  "stock/colors-options": {
-    label: "Color Options",
-    resourceKey: "stock.attributes.colors-options",
   },
   "stock/sizes": {
     label: "Ring sizes",
@@ -135,11 +121,6 @@ export const SETTINGS_SECTION_META: Record<string, SettingsSectionMeta> = {
     resourceKey: "stock.others.other-materials",
     countKey: "others",
   },
-  "stock/other-online-ranges": {
-    label: "Online Ranges",
-    resourceKey: "stock.others.other-online-ranges",
-    countKey: "others",
-  },
   "stock/other-custom-tariff-codes": {
     label: "Custom Tariff Codes",
     resourceKey: "stock.others.other-custom-tariff-codes",
@@ -152,10 +133,6 @@ export const SETTINGS_SECTION_META: Record<string, SettingsSectionMeta> = {
   "address/payment-method": { label: "Payment Method", resourceKey: "address.payment-method" },
   "address/ship-from": { label: "Ship From", resourceKey: "address.ship-from" },
   "address/pay-term": { label: "Pay Term", resourceKey: "address.pay-term" },
-  "address/special-customer": {
-    label: "Special Customer",
-    resourceKey: "address.special-customer",
-  },
   "address/ship-method": { label: "Ship Method", resourceKey: "address.ship-method" },
   "address/contact-departments": {
     label: "Contact Departments",
@@ -247,19 +224,15 @@ export const sectionTitles: Record<string, { title: string; desc: string }> = {
   "stock/stock/selections": { title: "Selections", desc: "Stock selection lookup values." },
   "stock/stock/collections": { title: "Collections", desc: "Collection lookup values." },
   "stock/stock/stock-ranges": { title: "Stock ranges", desc: "Range codes for stock." },
-  "stock/stock/marketing": { title: "Marketing blurbs", desc: "Short marketing snippets." },
   "stock/colors": { title: "Colours", desc: "Colour swatches and codes." },
-  "stock/colors-options": { title: "Colour options", desc: "Bundled / assorted colour options." },
   "stock/sizes": { title: "Ring sizes", desc: "International ring size conversion table." },
   "stock/units": { title: "Units", desc: "Units of measure." },
-  "stock/carding": { title: "Carding", desc: "Carding / ticket options." },
   "stock/displays": { title: "Displays", desc: "Display types." },
   "stock/assembly-costs": { title: "Assembly costs", desc: "Assembly-side cost rows." },
   "stock/packing-costs": { title: "Packing costs", desc: "Packing-side cost rows." },
   "stock/other-assortments": { title: "Assortments", desc: "Other assortment codes." },
   "stock/other-genders": { title: "Target genders", desc: "Gender target lookup values." },
   "stock/other-materials": { title: "Materials", desc: "Jewellery / product materials." },
-  "stock/other-online-ranges": { title: "Joe online ranges", desc: "Joe Cool online range flags." },
   "stock/other-custom-tariff-codes": {
     title: "Custom tariff codes",
     desc: "Customs / tariff reference codes.",
@@ -271,7 +244,6 @@ export const sectionTitles: Record<string, { title: string; desc: string }> = {
   "address/payment-method": { title: "Payment methods", desc: "Accepted payment methods." },
   "address/ship-from": { title: "Ship from", desc: "Ship-from locations." },
   "address/pay-term": { title: "Pay terms", desc: "Payment term codes." },
-  "address/special-customer": { title: "Special customers", desc: "Special customer flags." },
   "address/ship-method": { title: "Ship methods", desc: "Carrier / ship methods." },
   "address/contact-departments": { title: "Contact departments", desc: "Department directory." },
   "address/contact-role": { title: "Contact roles", desc: "Roles on customer contacts." },

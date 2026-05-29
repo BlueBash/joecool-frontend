@@ -9,7 +9,7 @@ const SELECT_CLASS =
 
 export interface FormSelectFieldProps<T extends FieldValues> {
   name: FieldPath<T>;
-  label: string;
+  label?: string;
   required?: boolean;
   hint?: string;
   className?: string;

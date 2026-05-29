@@ -313,16 +313,16 @@ export function StockItemCodeField({ className }: { className?: string }) {
   );
 }
 
-/** Mirrors `factyCost` as a disabled "First Cost" field on the cost tab. */
+/** Read-only first cost (`factyCost / factyPer`) on the cost tab. */
 export function StockFirstCostField({ className }: { className?: string }) {
   const { watch } = useFormContext<StockFormValues>();
-  const factyCost = watch("factyCost");
+  const firstCost = watch("firstCost");
   return (
     <Field label="First Cost" className={className}>
       <Input
         type="number"
-        step="0.01"
-        value={factyCost ?? ""}
+        step="0.0001"
+        value={firstCost ?? ""}
         disabled
         className={STOCK_FIELD_CLASS.NUM}
         readOnly
